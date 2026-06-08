@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudioCalc | Analizador de Curvas de Ruido</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { 
+            font-family: Arial, Helvetica, sans-serif; 
+            background-color: #f8f8f8; 
+        }
+        .studio-card { 
+            background: white; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08); 
+            border: 1px solid #e3e3e3; 
+        }
+        .input-group label { 
+            font-size: 0.7rem; 
+            font-weight: 600; 
+            color: #757070; 
+            text-transform: uppercase; 
+            letter-spacing: 0.05em; 
+        }
+        .input-field { 
+            width: 100%; 
+            padding: 0.35rem 0.4rem; 
+            border: 1px solid #adadad; 
+            border-radius: 4px; 
+            font-size: 0.8rem; 
+            font-family: Arial, Helvetica, sans-serif;
+            transition: all 0.2s; 
+            background-color: #f8f8f8; 
+        }
+        .input-field:focus { 
+            outline: none; 
+            border-color: #00aded; 
+            box-shadow: 0 0 0 2px rgba(0, 173, 237, 0.2); 
+            background-color: white; 
+        }
+        .status-pass { 
+            background-color: #e6f4ea; 
+            color: #137333; 
+            border: 1px solid #81c995; 
+        }
+        .status-fail { 
+            background-color: #fce8e6; 
+            color: #c5221f; 
+            border: 1px solid #ea868f; 
+        }
+        .curve-badge { 
+            font-variant-numeric: tabular-nums; 
+            font-weight: 700; 
+        }
+        .freq-label { 
+            font-family: Arial, sans-serif; 
+            font-weight: 600; 
+            color: #475569; 
+            font-size: 0.7rem;
+        }
+        select { cursor: pointer; }
+        .technical-note {
+            background-color: #fff9e6;
+            border-left: 3px solid #ffb400;
+            padding: 0.75rem;
+            margin-top: 0.5rem;
+            font-size: 0.75rem;
+            color: #757070;
+        }
+        .btn-example {
+            background-color: #00aded;
+            color: white;
+            padding: 0.4rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-example:hover { background-color: #019CD2; }
+    </style>
+</head>
+<body class="text-slate-800 pb-12">
+
+    <header class="bg-white border-b-2 border-[#00aded] py-5 px-4 shadow-sm">
+        <div class="max-w-6xl mx-auto">
+            <h1 class="text-xl font-bold text-[#00aded]">StudioCalc <span class="text-[#757070]">|</span> Analizador de Curvas de Ruido</h1>
+            <p class="text-[#757070] text-sm mt-1">Evaluación de Ruido de Fondo según ANSI S12.2, ISO 1996, ASHRAE y DIN 4109</p>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 mt-6 space-y-6">
+
+        <!-- Sección 0: Explicación de Familias -->
+        <section class="studio-card p-5">
+            <h2 class="text-base font-bold text-[#00aded] mb-3">Familias de Curvas de Ruido</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs text-[#757070]">
+                <div class="bg-[#f8f8f8] p-3 rounded border border-[#e3e3e3]">
+                    <strong class="text-[#00aded]">NC (Noise Criterion):</strong> ANSI S12.2-2019. Rango NC-10 a NC-70. Estándar americano para evaluación de ruido de fondo en interiores.
+                </div>
+                <div class="bg-[#f8f8f8] p-3 rounded border border-[#e3e3e3]">
+                    <strong class="text-[#00aded]">NR (Noise Rating):</strong> ISO 1996. Rango NR-0 a NR-70. Estándar internacional/europeo. Similar al NC con variaciones en bandas extremas.
+                </div>
+                <div class="bg-[#f8f8f8] p-3 rounded border border-[#e3e3e3]">
+                    <strong class="text-[#00aded]">PNC (Preferred NC):</strong> Beranek (1971). Rango PNC-10 a PNC-60. Versión mejorada del NC que corrige deficiencias en bajas y altas frecuencias.
+                </div>
+                <div class="bg-[#f8f8f8] p-3 rounded border border-[#e3e3e3]">
+                    <strong class="text-[#00aded]">RC (Room Criterion):</strong> ASHRAE. Rango RC-15 a RC-55. Evalúa nivel y calidad espectral (N: Neutral, R: Rumble, H: Hiss) en sistemas HVAC.
+                </div>
+                <div class="bg-[#f8f8f8] p-3 rounded border border-[#e3e3e3]">
+                    <strong class="text-[#00aded]">NCB (Balanced):</strong> Beranek (1989). Versión balanceada del NC. <strong>Más restrictiva en bajas frecuencias (31.5-125 Hz)</strong> para evitar molestias por vibración (rumble).
+                </div>
+                <div class="bg-[#f8f8f8] p-3 rounded border border-[#e3e3e3]">
+                    <strong class="text-[#00aded]">DIN 4109 / VDI 2058:</strong> Norma alemana. <strong>Evaluación en dB(A)</strong> (nivel global), no curvas espectrales. Límites según tipo de recinto.
+                </div>
+            </div>
+            <div class="technical-note">
+                <strong>Nota técnica:</strong> La medición debe realizarse en <strong>dB(Z)</strong> (ponderación Z/lineal), NO en dB(A). Las curvas NC/NR/PNC/RC ya incorporan su propia ponderación de frecuencia. 
+                Para DIN 4109, el sistema calcula automáticamente la conversión dBZ → dB(A) aplicando las correcciones de ponderación A (IEC 61672).
+                <br><em>Tolerancia: Se recomienda considerar una incertidumbre de medición de ±2 dB por banda (IEC 61672-1).</em>
+            </div>
+        </section>
+
+        <!-- Sección 1: Tipo de Recinto -->
+        <section class="studio-card p-5">
+            <h2 class="text-base font-bold text-[#00aded] mb-3">1. Clasificación del Recinto</h2>
+            <div class="input-group">
+                <label for="roomType" class="block mb-2">Seleccione la actividad principal del local</label>
+                <select id="roomType" class="input-field font-semibold text-[#000000]" onchange="calculateAll()">
+                    <optgroup label="VIVIENDAS">
+                        <option value="bedroom">Dormitorio / Habitación (Reposo Nocturno)</option>
+                        <option value="living_room">Sala de Estar / Living (Uso Diurno)</option>
+                        <option value="house_general">Casa / Departamento General</option>
+                        <option value="apartment">Departamento / Apartamento</option>
+                    </optgroup>
+                    <optgroup label="RECINTOS CRÍTICOS">
+                        <option value="studio">Estudio de Grabación / Sala de Conciertos</option>
+                        <option value="cinema">Cine / Home Theater / Auditorio</option>
+                    </optgroup>
+                    <optgroup label="TRABAJO / ESTUDIO">
+                        <option value="conference">Sala de Conferencias / Aula Universitaria</option>
+                        <option value="library">Biblioteca / Sala de Lectura</option>
+                        <option value="private_office" selected>Oficina Privada / Despacho</option>
+                        <option value="open_office">Oficina Abierta / Call Center</option>
+                    </optgroup>
+                    <optgroup label="SALUD">
+                        <option value="hospital">Habitación de Hospital / Clínica</option>
+                    </optgroup>
+                    <optgroup label="COMERCIO">
+                        <option value="restaurant">Restaurante / Cafetería / Bar</option>
+                        <option value="retail">Comercio / Tienda / Supermercado</option>
+                    </optgroup>
+                    <optgroup label="OTROS">
+                        <option value="gym">Gimnasio / Área Deportiva</option>
+                        <option value="industrial">Área Industrial / Taller</option>
+                    </optgroup>
+                </select>
+            </div>
+        </section>
+
+        <!-- Sección 2 y 4: Mediciones y Gráfico (LAYOUT ASIMÉTRICO) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Sección 2: Mediciones (COLUMNA ESTRECHA - 4/12) -->
+            <section class="studio-card p-5 lg:col-span-4">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-base font-bold text-[#00aded]">2. Medición (dBZ)</h2>
+                    <button id="btnExample" class="btn-example">Ejemplo</button>
+                </div>
+                <p class="text-xs text-[#757070] mb-4">Ingrese el NPS por banda de octava.</p>
+                <div class="space-y-2 max-w-[200px]" id="inputGrid">
+                    <!-- Generado por JS -->
+                </div>
+            </section>
+
+            <!-- Sección 4: Visualización Gráfica (COLUMNA ANCHA - 8/12) -->
+            <section class="studio-card p-5 lg:col-span-8">
+                <h2 class="text-base font-bold text-[#00aded] mb-3">Análisis Gráfico</h2>
+                <div class="input-group mb-3 max-w-xs">
+                    <label for="graphFamily" class="block mb-2">Familia de Curvas</label>
+                    <select id="graphFamily" class="input-field" onchange="updateChart()">
+                        <option value="NC">Noise Criterion (NC)</option>
+                        <option value="NR">Noise Rating (NR)</option>
+                        <option value="PNC">Preferred Noise Criterion (PNC)</option>
+                        <option value="RC">Room Criterion (RC)</option>
+                        <option value="NCB">Noise Criterion Balanced (NCB)</option>
+                    </select>
+                </div>
+                <div class="relative h-72 w-full bg-[#f8f8f8] rounded border border-[#e3e3e3] p-2">
+                    <canvas id="noiseChart"></canvas>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-[#757070] justify-center">
+                    <span class="flex items-center gap-1"><span class="w-3 h-[1px] bg-[#9ea3ab] opacity-40"></span> Curvas Familia</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-[1px] bg-[#00aded]"></span> Medido</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-[1px] border-t border-dashed border-[#ffb400]"></span> Recomendada</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-[1px] bg-[#10b981]"></span> Cumplida</span>
+                </div>
+            </section>
+        </div>
+
+        <!-- Sección 3: Panel de Resultados -->
+        <section class="studio-card p-5">
+            <h2 class="text-base font-bold text-[#00aded] mb-4">3. Evaluación por Familia de Curvas</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3" id="resultsGrid">
+                <!-- Generado por JS -->
+            </div>
+        </section>
+
+        <footer class="text-center text-[#757070] text-xs py-6 border-t border-[#e3e3e3] mt-8">
+            <p class="font-medium text-[#475569]">Manual Técnico de Ingeniería Acústica (Versión Maestra)</p>
+            <p class="font-bold text-[#000000] mt-1 text-sm">Autor: Ricardo Cabrera V.</p>
+            <p class="text-[10px] mt-2 max-w-2xl mx-auto leading-relaxed">
+                Curvas calculadas bajo ANSI S12.2-2019 (NC/NCB), ISO 1996 (NR), ASHRAE (RC), Beranek 1971/1989 (PNC/NCB). 
+                DIN 4109: Cálculo de nivel global dB(A) con ponderación IEC 61672.
+            </p>
+        </footer>
+
+    </main>
+
+    <script>
+        const bands = ['31.5', '63', '125', '250', '500', '1000', '2000', '4000', '8000'];
+        
+        const aWeightingCorrections = {
+            '31.5': -39.4, '63': -26.2, '125': -16.1, '250': -8.6,
+            '500': -3.2, '1000': 0.0, '2000': 1.2, '4000': 1.0, '8000': -1.1
+        };
+
+        const preciseCurves = {
+            'NC': {
+                10: [44, 33, 26, 20, 16, 14, 13, 12, 11], 15: [47, 36, 29, 23, 19, 17, 16, 15, 14],
+                20: [51, 40, 33, 27, 23, 21, 20, 19, 18], 25: [54, 44, 37, 31, 27, 25, 24, 23, 22],
+                30: [57, 48, 41, 35, 31, 29, 28, 27, 26], 35: [60, 52, 45, 39, 35, 33, 32, 31, 30],
+                40: [63, 56, 49, 43, 39, 37, 36, 35, 34], 45: [66, 60, 53, 47, 43, 41, 40, 39, 38],
+                50: [69, 64, 57, 51, 47, 45, 44, 43, 42], 55: [72, 68, 61, 55, 51, 49, 48, 47, 46],
+                60: [75, 72, 65, 59, 55, 53, 52, 51, 50], 65: [78, 76, 69, 63, 59, 57, 56, 55, 54],
+                70: [81, 80, 73, 67, 63, 61, 60, 59, 58]
+            },
+            'NCB': {
+                10: [41, 30, 23, 20, 16, 14, 13, 12, 11], 15: [44, 33, 26, 23, 19, 17, 16, 15, 14],
+                20: [48, 37, 30, 27, 23, 21, 20, 19, 18], 25: [51, 41, 34, 31, 27, 25, 24, 23, 22],
+                30: [54, 45, 38, 35, 31, 29, 28, 27, 26], 35: [57, 49, 42, 39, 35, 33, 32, 31, 30],
+                40: [60, 53, 46, 43, 39, 37, 36, 35, 34], 45: [63, 57, 50, 47, 43, 41, 40, 39, 38],
+                50: [66, 61, 54, 51, 47, 45, 44, 43, 42]
+            },
+            // NR corregidas — fórmula ISO 1996: L(f,NR) = a(f) + b(f)·NR
+            // Constantes: 31.5(55.4,0.681) 63(35.5,0.790) 125(22.0,0.870) 250(12.0,0.930)
+            //             500(4.8,0.974) 1k(0,1.000) 2k(-3.5,1.015) 4k(-6.1,1.025) 8k(-8.0,1.030)
+            // Propiedad clave: NR-N tiene exactamente N dB en 1000 Hz.
+            'NR': {
+                 0: [55, 36, 22, 12,  5,  0,  0,  0,  0],
+                10: [62, 43, 31, 21, 15, 10,  7,  4,  2],
+                15: [66, 47, 35, 26, 19, 15, 12,  9,  7],
+                20: [69, 51, 39, 31, 24, 20, 17, 14, 13],
+                25: [72, 55, 44, 35, 29, 25, 22, 20, 18],
+                30: [76, 59, 48, 40, 34, 30, 27, 25, 23],
+                35: [79, 63, 52, 45, 39, 35, 32, 30, 28],
+                40: [83, 67, 57, 49, 44, 40, 37, 35, 33],
+                45: [86, 71, 61, 54, 49, 45, 42, 40, 38],
+                50: [89, 75, 66, 58, 53, 50, 47, 45, 44],
+                55: [93, 79, 70, 63, 58, 55, 52, 50, 49],
+                60: [96, 83, 74, 68, 63, 60, 57, 55, 54],
+                65: [100, 87, 79, 72, 68, 65, 62, 61, 59],
+                70: [103, 91, 83, 77, 73, 70, 68, 66, 64]
+            },
+            'PNC': {
+                10: [44, 29, 21, 16, 12, 11, 10, 9, 7], 15: [47, 32, 24, 19, 15, 14, 13, 12, 10],
+                20: [50, 36, 28, 23, 19, 18, 17, 16, 14], 25: [53, 40, 32, 27, 23, 22, 21, 20, 18],
+                30: [56, 44, 36, 31, 27, 26, 25, 24, 22], 35: [59, 48, 40, 35, 31, 30, 29, 28, 26],
+                40: [62, 52, 44, 39, 35, 34, 33, 32, 30], 45: [65, 56, 48, 43, 39, 38, 37, 36, 34],
+                50: [68, 60, 52, 47, 43, 42, 41, 40, 38], 55: [71, 64, 56, 51, 47, 46, 45, 44, 42],
+                60: [74, 68, 60, 55, 51, 50, 49, 48, 46]
+            },
+            // RC corregidas — ASHRAE: región plana (250–8000 Hz) = N dB.
+            // Bajas frecuencias suben ~5 dB/octava bajo 250 Hz.
+            // Formato: [31.5, 63, 125, 250, 500, 1000, 2000, 4000, 8000]
+            'RC': {
+                15: [34, 26, 20, 16, 15, 15, 15, 15, 15],
+                20: [39, 31, 25, 21, 20, 20, 20, 20, 20],
+                25: [44, 36, 30, 26, 25, 25, 25, 25, 25],
+                30: [49, 41, 35, 31, 30, 30, 30, 30, 30],
+                35: [54, 46, 40, 36, 35, 35, 35, 35, 35],
+                40: [59, 51, 45, 41, 40, 40, 40, 40, 40],
+                45: [64, 56, 50, 46, 45, 45, 45, 45, 45],
+                50: [69, 61, 55, 51, 50, 50, 50, 50, 50],
+                55: [74, 66, 60, 56, 55, 55, 55, 55, 55]
+            }
+        };
+
+        const roomRecommendations = {
+            'bedroom': { 'NC': 25, 'NR': 25, 'PNC': 25, 'RC': 25, 'NCB': 25, 'DIN': 30 },
+            'living_room': { 'NC': 30, 'NR': 30, 'PNC': 30, 'RC': 30, 'NCB': 30, 'DIN': 35 },
+            'house_general': { 'NC': 30, 'NR': 30, 'PNC': 30, 'RC': 30, 'NCB': 30, 'DIN': 35 },
+            'apartment': { 'NC': 30, 'NR': 30, 'PNC': 30, 'RC': 30, 'NCB': 30, 'DIN': 35 },
+            'studio': { 'NC': 15, 'NR': 15, 'PNC': 15, 'RC': 20, 'NCB': 15, 'DIN': 20 },
+            'cinema': { 'NC': 25, 'NR': 25, 'PNC': 25, 'RC': 25, 'NCB': 25, 'DIN': 30 },
+            'conference': { 'NC': 30, 'NR': 30, 'PNC': 30, 'RC': 30, 'NCB': 30, 'DIN': 35 },
+            'library': { 'NC': 30, 'NR': 30, 'PNC': 30, 'RC': 30, 'NCB': 30, 'DIN': 35 },
+            'private_office': { 'NC': 35, 'NR': 35, 'PNC': 35, 'RC': 35, 'NCB': 35, 'DIN': 40 },
+            'open_office': { 'NC': 40, 'NR': 40, 'PNC': 40, 'RC': 40, 'NCB': 40, 'DIN': 45 },
+            'hospital': { 'NC': 25, 'NR': 25, 'PNC': 25, 'RC': 25, 'NCB': 25, 'DIN': 30 },
+            'restaurant': { 'NC': 45, 'NR': 45, 'PNC': 45, 'RC': 40, 'NCB': 45, 'DIN': 45 },
+            'retail': { 'NC': 45, 'NR': 45, 'PNC': 45, 'RC': 40, 'NCB': 45, 'DIN': 45 },
+            'gym': { 'NC': 50, 'NR': 50, 'PNC': 50, 'RC': 45, 'NCB': 50, 'DIN': 50 },
+            'industrial': { 'NC': 55, 'NR': 55, 'PNC': 55, 'RC': 50, 'NCB': 55, 'DIN': 55 }
+        };
+
+        function initUI() {
+            const inputGrid = document.getElementById('inputGrid');
+            bands.forEach((band) => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center gap-2';
+                div.innerHTML = `
+                    <label for="band_${band}" class="freq-label w-10 text-right">${band}</label>
+                    <input type="number" id="band_${band}" class="input-field text-center font-semibold" value="" min="0" max="120" oninput="calculateAll()">
+                `;
+                inputGrid.appendChild(div);
+            });
+            
+            document.getElementById('btnExample').addEventListener('click', loadExample);
+            calculateAll();
+        }
+
+        function loadExample() {
+            const exampleData = { '31.5': 45, '63': 42, '125': 38, '250': 35, '500': 32, '1000': 30, '2000': 28, '4000': 25, '8000': 22 };
+            bands.forEach(band => {
+                document.getElementById(`band_${band}`).value = exampleData[band];
+            });
+            calculateAll();
+        }
+
+        function getMeasurements() {
+            return bands.map(band => {
+                const val = parseFloat(document.getElementById(`band_${band}`).value);
+                return isNaN(val) ? 0 : val;
+            });
+        }
+
+        function calculateDecibelA(measurements) {
+            const weightedLevels = measurements.map((level, i) => level + aWeightingCorrections[bands[i]]);
+            let sum = 0;
+            weightedLevels.forEach(level => {
+                if (level > -100) sum += Math.pow(10, level / 10);
+            });
+            return sum > 0 ? Math.round(10 * Math.log10(sum) * 10) / 10 : 0;
+        }
+
+        function findAchievedCurve(family, measurements) {
+            const curves = preciseCurves[family];
+            const levels = Object.keys(curves).map(Number).sort((a, b) => a - b);
+            for (let level of levels) {
+                if (measurements.every((val, i) => val <= curves[level][i])) return level;
+            }
+            return `>${levels[levels.length - 1]}`;
+        }
+
+        function calculateAll() {
+            const roomType = document.getElementById('roomType').value;
+            const measurements = getMeasurements();
+            const families = ['NC', 'NR', 'PNC', 'RC', 'NCB', 'DIN'];
+            const resultsGrid = document.getElementById('resultsGrid');
+            resultsGrid.innerHTML = '';
+            const total_dBA = calculateDecibelA(measurements);
+
+            families.forEach(family => {
+                const recommended = roomRecommendations[roomType][family];
+                let passes, labelRec, labelAch;
+
+                if (family === 'DIN') {
+                    passes = total_dBA <= recommended;
+                    labelRec = `${recommended} dB(A)`;
+                    labelAch = `${total_dBA} dB(A)`;
+                } else {
+                    const achieved = findAchievedCurve(family, measurements);
+                    const isNum = typeof achieved === 'number';
+                    passes = isNum && (achieved <= recommended);
+                    labelRec = `${family}-${recommended}`;
+                    labelAch = isNum ? `${family}-${achieved}` : achieved;
+                }
+
+                const card = document.createElement('div');
+                card.className = `p-3 rounded border ${passes ? 'border-[#81c995] bg-[#e6f4ea]' : 'border-[#ea868f] bg-[#fce8e6]'}`;
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="font-bold text-[#00aded] text-xs uppercase">${family}</h3>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded ${passes ? 'status-pass' : 'status-fail'}">${passes ? 'CUMPLE' : 'NO CUMPLE'}</span>
+                    </div>
+                    <div class="space-y-1 text-xs">
+                        <div class="flex justify-between"><span class="text-[#757070]">Límite:</span><span class="font-bold text-[#ffb400] curve-badge">${labelRec}</span></div>
+                        <div class="flex justify-between"><span class="text-[#757070]">Alcanzado:</span><span class="font-bold ${passes ? 'text-[#10b981]' : 'text-[#c5221f]'} curve-badge">${labelAch}</span></div>
+                    </div>
+                `;
+                resultsGrid.appendChild(card);
+            });
+            updateChart();
+        }
+
+        let chartInstance = null;
+        function updateChart() {
+            const family = document.getElementById('graphFamily').value;
+            const measurements = getMeasurements();
+            const roomType = document.getElementById('roomType').value;
+            const recommendedLevel = roomRecommendations[roomType][family];
+            const achievedLevel = findAchievedCurve(family, measurements);
+            const curves = preciseCurves[family];
+            const levels = Object.keys(curves).map(Number).sort((a, b) => a - b);
+
+            const datasets = [];
+            levels.forEach(level => {
+                datasets.push({ label: '', data: curves[level], borderColor: 'rgba(117, 112, 112, 0.35)', borderWidth: 1, pointRadius: 0, fill: false, order: 10 });
+            });
+
+            if (curves[recommendedLevel]) {
+                datasets.push({ label: `Recomendada (${family}-${recommendedLevel})`, data: curves[recommendedLevel], borderColor: '#ffb400', borderWidth: 2, borderDash: [5, 3], pointRadius: 2, fill: false, order: 2 });
+            }
+            if (typeof achievedLevel === 'number' && curves[achievedLevel] && achievedLevel !== recommendedLevel) {
+                datasets.push({ label: `Cumplida (${family}-${achievedLevel})`, data: curves[achievedLevel], borderColor: '#10b981', borderWidth: 2, pointRadius: 2, fill: false, order: 1 });
+            }
+            datasets.push({ label: 'Medido', data: measurements, borderColor: '#00aded', backgroundColor: 'rgba(0, 173, 237, 0.1)', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: '#ffffff', pointBorderColor: '#00aded', pointBorderWidth: 2, tension: 0.1, fill: true, order: 0 });
+
+            const ctx = document.getElementById('noiseChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: { labels: bands, datasets: datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        y: { title: { display: true, text: 'dB', font: { size: 10 } }, min: 0, max: 100, grid: { color: '#e3e3e3' }, ticks: { stepSize: 10, font: { size: 9 } } },
+                        x: { title: { display: true, text: 'Hz', font: { size: 10 } }, grid: { display: false }, ticks: { font: { size: 9 } } }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 6, font: { size: 9 }, filter: (item) => item.text !== '' } },
+                        tooltip: { backgroundColor: 'rgba(0, 0, 0, 0.85)', titleFont: { size: 11 }, bodyFont: { size: 10 }, padding: 8 }
+                    }
+                }
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', initUI);
+    </script>
+</body>
+</html>

@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudioCalc | Resonador de Helmholtz</title>
+    <style>
+        :root {
+            --primary:   #00aded;
+            --dark:      #2c3e50;
+            --bg:        #1a1a2e;
+            --panel:     #242438;
+            --text:      #e0e0e0;
+            --dim-color: #ff4444;
+            --wood:      #a07040;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ── Sidebar ───────────────────────────────────────────────────────── */
+        .sidebar {
+            width: 320px;
+            background-color: var(--panel);
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            padding: 18px;
+            box-shadow: 4px 0 12px rgba(0,0,0,0.4);
+            overflow-y: auto;
+        }
+
+        .sidebar-title {
+            color: var(--primary);
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 8px;
+            margin: 0 0 16px;
+            letter-spacing: 0.5px;
+        }
+
+        h3 { font-size: 0.8rem; color: #7a9bb5; margin-top: 18px;
+             border-bottom: 1px solid #333; margin-bottom: 10px;
+             text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .form-row { display: flex; gap: 10px; margin-bottom: 13px; }
+        .input-wrap { flex: 1; position: relative; margin-bottom: 13px; }
+
+        label { display: block; font-size: 0.72rem; color: #8ab4cc; margin-bottom: 4px; font-weight: 600; }
+
+        input {
+            width: 100%; box-sizing: border-box;
+            background: #111827; border: 1px solid #2a4a6a;
+            color: #e0e0e0; padding: 8px; font-family: monospace; font-size: 0.95rem;
+            border-radius: 4px; padding-right: 32px;
+        }
+        input:focus { outline: none; border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(0,173,237,0.2); }
+
+        .unit { position: absolute; right: 8px; top: 31px; color: #556; font-size: 0.75rem; pointer-events: none; }
+
+        .results {
+            background: #0f1520; padding: 12px; border-radius: 6px;
+            border: 1px solid #2a4a6a; margin-top: 10px;
+        }
+        .res-row { display: flex; justify-content: space-between; margin-bottom: 6px; align-items: baseline; }
+        .res-val { color: var(--primary); font-weight: bold; font-family: monospace; font-size: 1.05rem; }
+        .res-lbl { font-size: 0.78rem; color: #8ab4cc; }
+
+        .cutlist {
+            font-family: monospace; font-size: 0.82rem; color: #8ab4cc;
+            background: #0f1520; padding: 10px; border: 1px dashed #2a4a6a;
+            border-radius: 4px; line-height: 1.7;
+        }
+
+        /* ── Panel de gráficos ─────────────────────────────────────────────── */
+        .main {
+            flex: 1;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;   /* scroll vertical cuando no cabe todo */
+        }
+
+        .card {
+            background: #161b2e;
+            padding-top: 26px;
+            border: 1px solid #2a4a6a;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            min-height: 340px;
+        }
+        .card-full { width: 100%; min-height: 380px; }
+
+        /* Fila inferior: los dos cards pequeños lado a lado */
+        .card-row {
+            display: flex;
+            gap: 16px;
+            flex: 1;
+        }
+        .card-row .card { flex: 1; }
+
+        .card-title {
+            position: absolute; top: 0; left: 0;
+            background: var(--primary); color: #fff;
+            padding: 5px 12px; font-size: 0.72rem; font-weight: bold;
+            z-index: 10; border-radius: 8px 0 6px 0;
+            letter-spacing: 0.4px;
+        }
+
+        svg { width: 100%; height: calc(100% - 26px); position: absolute; left: 0; top: 26px; background: #0d1117; }
+
+        /* SVG */
+        .dim-line { stroke: var(--dim-color); stroke-width: 1; }
+        .dim-text { fill: var(--dim-color); font-family: monospace; font-weight: bold; font-size: 14px; }
+        .wood-fill { fill: var(--wood); stroke: #5c4033; stroke-width: 1; }
+        .hole-fill { fill: url(#woolPat); stroke: none; }
+
+        /* ── Footer ────────────────────────────────────────────────────────── */
+        .footer-label {
+            text-align: center;
+            font-size: 0.7rem;
+            color: #4a7a9b;
+            padding: 8px 0 6px;
+            border-top: 1px solid #2a4a6a;
+            margin-top: 4px;
+            flex-shrink: 0;
+        }
+
+        /* ── Responsive ────────────────────────────────────────────────────── */
+        @media (max-width: 980px) {
+            body { display: block; height: auto; overflow: auto; }
+            .sidebar { width: auto; border-right: none; border-bottom: 1px solid #333;
+                       box-shadow: none; padding: 14px; }
+            .main { padding: 14px; gap: 14px; }
+            .card-row { flex-direction: column; }
+            .card, .card-full { min-height: 300px; }
+            .form-row { flex-direction: column; gap: 0; margin-bottom: 0; }
+        }
+
+        @media (max-width: 640px) {
+            .sidebar, .main { padding: 10px; }
+            h3 { font-size: 0.75rem; margin-top: 14px; }
+            .results { padding: 10px; }
+            .card-title { font-size: 0.65rem; padding: 4px 8px; }
+            .card, .card-full { min-height: 260px; }
+            .dim-text { font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="sidebar-title">StudioCalc · Resonador de Helmholtz</div>
+    
+    <h3>Acústica & Panel</h3>
+    <div class="input-wrap">
+        <label>Frecuencia (Hz)</label>
+        <input type="number" id="freq" value="100" oninput="update()">
+        <span class="unit">Hz</span>
+    </div>
+
+    <div class="form-row">
+        <div class="input-wrap">
+            <label>Ancho Panel</label>
+            <input type="number" id="width" value="610" oninput="update()">
+            <span class="unit">mm</span>
+        </div>
+        <div class="input-wrap">
+            <label>Alto Panel</label>
+            <input type="number" id="height" value="610" oninput="update()">
+            <span class="unit">mm</span>
+        </div>
+    </div>
+
+    <h3>Materiales</h3>
+    <div class="form-row">
+        <div class="input-wrap">
+            <label>Espesor Placa</label>
+            <input type="number" id="thick" value="18" oninput="update()">
+            <span class="unit">mm</span>
+        </div>
+        <div class="input-wrap">
+            <label>Broca Ø</label>
+            <input type="number" id="drill" value="6" oninput="update()">
+            <span class="unit">mm</span>
+        </div>
+    </div>
+    <div class="input-wrap">
+        <label>Prof. Bastidor (Aire)</label>
+        <input type="number" id="depth" value="100" oninput="update()">
+        <span class="unit">mm</span>
+    </div>
+
+    <h3>Resultados</h3>
+    <div class="results">
+        <div class="res-row">
+            <span class="res-lbl">% Perforación:</span>
+            <span class="res-val" id="outP">0.00%</span>
+        </div>
+        <div class="res-row">
+            <span class="res-lbl">Separación (C-C):</span>
+            <span class="res-val" id="outS" style="color:#4ec9b0">0.0 mm</span>
+        </div>
+        <div class="res-row">
+            <span class="res-lbl">Total Agujeros:</span>
+            <span class="res-val" id="outHoles">0</span>
+        </div>
+    </div>
+
+    <h3>Despiece (Cutlist)</h3>
+    <div class="cutlist" id="cutlist">
+        Calculando...
+    </div>
+
+    <div class="footer-label">Prof. Ricardo Cabrera V.</div>
+</div>
+
+<div class="main">
+
+    <div class="card card-full">
+        <div class="card-title">1. VISTA FRONTAL (DIMENSIONES GENERALES)</div>
+        <svg id="svgFront" viewBox="-50 -50 500 400" preserveAspectRatio="xMidYMid meet">
+            <defs>
+                <marker id="arrow" markerWidth="6" markerHeight="6" refX="0" refY="3" orient="auto">
+                    <path d="M0,0 L0,6 L6,3 z" fill="#ff4444" />
+                </marker>
+                <pattern id="gridPat" width="20" height="20" patternUnits="userSpaceOnUse">
+                    <circle cx="10" cy="10" r="1.5" fill="#333"/>
+                </pattern>
+            </defs>
+            <g id="frontDraw" transform="translate(20, 20)"></g>
+        </svg>
+    </div>
+
+    <div class="card-row">
+    <div class="card">
+        <div class="card-title">2. CORTE A-A (SECCIÓN VERTICAL)</div>
+        <svg id="svgSection" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid meet">
+            <defs>
+                 <pattern id="woodPat" width="10" height="40" patternUnits="userSpaceOnUse">
+                    <rect width="10" height="40" fill="#a07040"/>
+                    <path d="M0,0 q5,20 10,0" stroke="#7a5530" fill="none"/>
+                </pattern>
+                <pattern id="woolPat" width="6" height="6" patternUnits="userSpaceOnUse">
+                    <rect width="6" height="6" fill="#333"/>
+                    <circle cx="3" cy="3" r="1" fill="#555"/>
+                </pattern>
+            </defs>
+            <g id="sectionDraw" transform="translate(40, 40)"></g>
+        </svg>
+    </div>
+
+    <div class="card">
+        <div class="card-title">3. DETALLE PERFORACIÓN (ZOOM)</div>
+        <svg id="svgDetail" viewBox="0 0 200 200">
+            <rect width="200" height="200" fill="#a07040" opacity="0.2"/>
+            <g id="detailDraw" transform="translate(95, 110)"></g>
+        </svg>
+    </div>
+    </div><!-- /card-row -->
+
+</div>
+
+<script>
+
+function update() {
+        // --- 1. INPUTS ---
+        const f = parseFloat(document.getElementById('freq').value) || 100;
+        const W = parseFloat(document.getElementById('width').value) || 610;
+        const H = parseFloat(document.getElementById('height').value) || 610;
+        const th = parseFloat(document.getElementById('thick').value) || 18;
+        const dr = parseFloat(document.getElementById('drill').value) || 6;
+        const dep = parseFloat(document.getElementById('depth').value) || 100;
+        const c = 344;
+
+        // --- 2. CÁLCULOS FÍSICOS (MKS) ---
+        const D_m = dep / 1000;
+        const l_m = th / 1000;
+        const d_m = dr / 1000;
+
+        let P = Math.pow((2 * Math.PI * f) / c, 2) * D_m * (l_m + (0.8 * d_m));
+        
+        let S_m = d_m * Math.sqrt(Math.PI / (4 * P));
+        let S_mm = S_m * 1000;
+        
+        let valid = true;
+        if(S_mm < dr + 2) valid = false;
+
+        // --- 3. RESULTADOS TEXTO ---
+        document.getElementById('outP').innerText = (P * 100).toFixed(2) + "%";
+        const elS = document.getElementById('outS');
+        elS.innerText = valid ? S_mm.toFixed(1) + " mm" : "ERROR";
+        elS.style.color = valid ? "#4ec9b0" : "red";
+
+        const col = Math.floor((W - 20)/S_mm); 
+        const row = Math.floor((H - 20)/S_mm);
+        document.getElementById('outHoles').innerText = valid ? (col * row) : 0;
+
+        const frameW = W;
+        const frameH = H - (2 * 20); 
+        document.getElementById('cutlist').innerHTML = `
+            1x PLACA FRONTAL: <b>${W} x ${H}</b> mm<br>
+            1x PLACA FONDO:   <b>${W} x ${H}</b> mm<br>
+            2x BASTIDOR SUP/INF: <b>${W}</b> mm de largo<br>
+            2x BASTIDOR LATERAL: <b>${H - 40}</b> mm de largo<br>
+            (Asumiendo listón de 20mm espesor)
+        `;
+
+        // --- 4. DIBUJO 1: VISTA FRONTAL ---
+        const drawF = document.getElementById('frontDraw');
+        drawF.innerHTML = "";
+        const scale = Math.min(350/W, 250/H);
+        const vW = W * scale;
+        const vH = H * scale;
+
+        // Panel
+        drawF.innerHTML += `<rect x="0" y="0" width="${vW}" height="${vH}" fill="#a07040" stroke="#5c4033" stroke-width="2"/>`;
+        
+        // Grid (Simbólico)
+        const pat = document.getElementById('gridPat');
+        const vS = S_mm * scale;
+        pat.setAttribute('width', vS);
+        pat.setAttribute('height', vS);
+        pat.children[0].setAttribute('cx', vS/2);
+        pat.children[0].setAttribute('cy', vS/2);
+        pat.children[0].setAttribute('r', Math.max(dr*scale/2, 1)); 
+        drawF.innerHTML += `<rect x="0" y="0" width="${vW}" height="${vH}" fill="url(#gridPat)" opacity="0.6"/>`;
+
+        // Cotas Generales
+        drawDim(drawF, 0, -20, vW, -20, W + "mm", true, false, "primary", "center"); // Ancho
+        drawDim(drawF, -20, 0, -20, vH, H + "mm", true, true, "primary", "left"); // Alto
+
+        
+        // --- 5. DIBUJO 2: SECCIÓN (MODIFICADO: AGUJEROS VISIBLES) ---
+        const drawS = document.getElementById('sectionDraw');
+        drawS.innerHTML = "";
+        
+        const vDep = Math.min(Math.max(dep, 20), 150); 
+        const vThick = Math.max(th, 5); 
+        
+        // Pared Fondo
+        drawS.innerHTML += `<rect x="0" y="0" width="10" height="${vH}" fill="url(#woodPat)" stroke="black"/>`;
+        // Marcos
+        drawS.innerHTML += `<rect x="10" y="0" width="${vDep}" height="20" fill="url(#woodPat)" stroke="black"/>`;
+        drawS.innerHTML += `<rect x="10" y="${vH-20}" width="${vDep}" height="20" fill="url(#woodPat)" stroke="black"/>`;
+        // Lana
+        drawS.innerHTML += `<rect x="10" y="20" width="${vDep}" height="${vH-40}" fill="url(#woolPat)" opacity="0.7"/>`;
+        
+        // PANEL FRONTAL (Dibujado primero sólido)
+        const px = 10 + vDep;
+        drawS.innerHTML += `<rect x="${px}" y="0" width="${vThick}" height="${vH}" fill="url(#woodPat)" stroke="black"/>`;
+
+        // --- BUCLE PARA "PERFORAR" EL PANEL VISUALMENTE ---
+        // Calculamos cuántos agujeros caben verticalmente y los dibujamos "encima" con textura de lana
+        const vDrill = dr * scale; // Diámetro visual escalado al alto del panel
+        const startY = (vH - (row * vS)) / 2 + (vS/2) - (vDrill/2);
+        
+        // Dibujamos máx 15 agujeros para no saturar si es muy denso
+        let step = 1;
+        if(row > 20) step = Math.ceil(row/20);
+
+        for(let i=0; i<row; i+=step) {
+            let hy = startY + (i * vS);
+            // Dibujar "agujero" (rect con textura lana)
+            drawS.innerHTML += `<rect x="${px}" y="${hy}" width="${vThick}" height="${vDrill}" class="hole-fill" />`;
+            // Líneas de borde de corte
+            drawS.innerHTML += `<line x1="${px}" y1="${hy}" x2="${px+vThick}" y2="${hy}" stroke="#000" stroke-width="0.5"/>`;
+            drawS.innerHTML += `<line x1="${px}" y1="${hy+vDrill}" x2="${px+vThick}" y2="${hy+vDrill}" stroke="#000" stroke-width="0.5"/>`;
+        }
+
+        // --- COTA VERTICAL DE SEPARACIÓN (PITCH) ---
+        // Tomamos dos agujeros cerca del centro para dibujar la cota
+        let midIdx = Math.floor(row/2);
+        let cy1 = startY + (midIdx * vS) + (vDrill/2);
+        let cy2 = cy1 + (vS * step); // Siguiente dibujado
+        
+        // Si el step es 1, es la separación real S. Si no, es múltiple, mejor forzar dibujo de 2 consecutivos en el centro
+        if(step > 1) {
+            // Dibujamos uno extra solo para la cota
+             let hyNext = startY + ((midIdx+1) * vS);
+             drawS.innerHTML += `<rect x="${px}" y="${hyNext}" width="${vThick}" height="${vDrill}" class="hole-fill" />`;
+             cy2 = hyNext + (vDrill/2);
+        }
+
+        // Línea de cota roja vertical (a la derecha del panel)
+        let dimX = px + vThick + 15;
+        // Líneas eje centro agujeros
+        drawS.innerHTML += `<line x1="${px}" y1="${cy1}" x2="${dimX+5}" y2="${cy1}" stroke="#ff4444" stroke-dasharray="2,2" stroke-width="0.5"/>`;
+        drawS.innerHTML += `<line x1="${px}" y1="${cy2}" x2="${dimX+5}" y2="${cy2}" stroke="#ff4444" stroke-dasharray="2,2" stroke-width="0.5"/>`;
+        // Flecha
+        drawDim(drawS, dimX, cy1, dimX, cy2, S_mm.toFixed(1)+"mm", true, true, "primary", "right");
+
+
+        // COTAS SECCIÓN GENERALES
+        drawDim(drawS, 10, vH+20, px, vH+20, dep+"mm", true, false, "primary", "below"); // Profundidad
+        drawDim(drawS, px, vH+20, px+vThick, vH+20, th+"mm", false, false, "primary", "below-right"); // Espesor
+        drawDim(drawS, -30, 0, -30, vH, H+"mm", true, true, "primary", "left"); // Alto Total
+
+
+        // --- 6. DIBUJO 3: DETALLE ---
+        const drawD = document.getElementById('detailDraw');
+        drawD.innerHTML = "";
+        
+        // Zoom didáctico (2x2 perforaciones)
+        let zoom = 2.2; 
+        if(S_mm*zoom > 110) zoom = 110/S_mm;
+        const g = S_mm * zoom;
+        const r = (dr * zoom)/2;
+
+        const hx = g/2;
+        const hy = g/2;
+
+        // 4 agujeros (2 arriba y 2 abajo)
+        const pts = [
+            [-hx, -hy], [ hx, -hy],
+            [-hx,  hy], [ hx,  hy],
+        ];
+        pts.forEach(([x,y]) => {
+            drawD.innerHTML += `<circle cx="${x}" cy="${y}" r="${r}" fill="#222" stroke="black"/>`;
+        });
+        
+        // Cota S horizontal (entre agujeros superiores)
+        drawDim(drawD, -hx, -hy - r - 12, hx, -hy - r - 12, S_mm.toFixed(1)+"mm", true, false, "secondary", "center");
+        
+        // Cota S vertical (entre agujeros derechos)
+        drawDim(drawD, hx + r + 16, -hy, hx + r + 16, hy, S_mm.toFixed(1)+"mm", true, true, "compact", "right-tight");
+        
+        // Cota D (diámetro) sobre el agujero inferior izquierdo
+        const dlx = -hx;
+        const dly1 = hy - r - 18;
+        const dly2 = hy - r - 4;
+        drawD.innerHTML += `<line x1="${dlx}" y1="${dly1}" x2="${dlx}" y2="${dly2}" stroke="#ff4444" stroke-width="1"/>`;
+        drawD.innerHTML += `<text x="${dlx}" y="${dly1 - 4}" text-anchor="middle" fill="#ff4444" font-size="12" font-family="monospace">Ø${dr}mm</text>`;
+
+
+
+
+    }
+
+    // Helper para cotas
+    function drawDim(svgInfo, x1, y1, x2, y2, text, arrow=true, vertical=false, type='secondary', labelPos='center') {
+        // Estilo de plano: sin flechas, con ticks y jerarquía tipográfica
+        const tick = 6;
+        const fontSize = (type === 'primary') ? 16 : (type === 'compact' ? 11 : 13);
+
+        let lines = "";
+        lines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="dim-line"/>`;
+
+        if(vertical) {
+            // Ticks horizontales
+            lines += `<line x1="${x1-tick}" y1="${y1}" x2="${x1+tick}" y2="${y1}" stroke="#666"/>`;
+            lines += `<line x1="${x2-tick}" y1="${y2}" x2="${x2+tick}" y2="${y2}" stroke="#666"/>`;
+            const midY = (y1+y2)/2;
+
+            // Número a la izquierda o derecha de la línea
+            const tx = (labelPos === 'left') ? (x1 - 22) : (labelPos === 'right-tight' ? (x1 + 15) : (x1 + 22));
+            lines += `<text x="${tx}" y="${midY}" class="dim-text" font-size="${fontSize}" text-anchor="middle" transform="rotate(-90 ${tx} ${midY})">${text}</text>`;
+        } else {
+            // Ticks verticales
+            lines += `<line x1="${x1}" y1="${y1-tick}" x2="${x1}" y2="${y1+tick}" stroke="#666"/>`;
+            lines += `<line x1="${x2}" y1="${y2-tick}" x2="${x2}" y2="${y2+tick}" stroke="#666"/>`;
+            const midX = (x1+x2)/2;
+
+            const isBelow = (labelPos === 'below' || labelPos === 'below-right');
+            const ty = isBelow ? (y1 + 18) : (y1 - 10);
+
+            if(labelPos === 'below-right') {
+                lines += `<text x="${x2 + 10}" y="${ty}" class="dim-text" font-size="${fontSize}" text-anchor="start">${text}</text>`;
+            } else if(labelPos === 'left') {
+                lines += `<text x="${x1 - 8}" y="${ty}" class="dim-text" font-size="${fontSize}" text-anchor="end">${text}</text>`;
+            } else if(labelPos === 'right') {
+                lines += `<text x="${x2 + 8}" y="${ty}" class="dim-text" font-size="${fontSize}" text-anchor="start">${text}</text>`;
+            } else {
+                lines += `<text x="${midX}" y="${ty}" class="dim-text" font-size="${fontSize}" text-anchor="middle">${text}</text>`;
+            }
+        }
+
+        svgInfo.innerHTML += lines;
+    }
+
+    window.onload = update;
+</script>
+
+</body>
+</html>

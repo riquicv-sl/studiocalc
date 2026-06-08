@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudioCalc | Auralización Paramétrica v2</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary: #00aded; --dark: #2c3e50; --bg: #f8f9fa; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: #333; margin: 0; padding: 20px; line-height: 1.5; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        .card { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #e0e0e0; padding: 20px; margin-bottom: 20px; }
+        h1 { color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-top: 0; font-size: 1.5rem; }
+        h2 { color: var(--dark); font-size: 1rem; margin: 0 0 14px; border-left: 4px solid var(--primary); padding-left: 10px; }
+
+        .room-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+        .room-btn { border: 2px solid #e0e0e0; border-radius: 8px; padding: 14px 10px; cursor: pointer; background: white; text-align: center; transition: all 0.2s; }
+        .room-btn:hover { border-color: var(--primary); }
+        .room-btn.active { border-color: var(--primary); background: #e8f7fd; }
+        .room-btn .icon { font-size: 2rem; display: block; margin-bottom: 6px; }
+        .room-btn .name { font-weight: bold; font-size: 0.85rem; color: var(--dark); }
+        .room-btn .desc { font-size: 0.72rem; color: #888; margin-top: 2px; }
+
+        .audio-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .file-label { background: var(--primary); color: white; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: background 0.2s; white-space: nowrap; }
+        .file-label:hover { background: #008cba; }
+        #fileInput { display: none; }
+        .file-name { font-size: 0.8rem; color: #666; font-style: italic; }
+
+        .btn-play { background: #2e7d32; color: white; border: none; padding: 7px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem; transition: background 0.2s; }
+        .btn-play:hover { background: #1b5e20; }
+        .btn-play:disabled { background: #aaa; cursor: not-allowed; }
+        .btn-stop { background: #c62828; }
+        .btn-stop:hover { background: #b71c1c; }
+
+        /* ── NUEVO: Ejemplos integrados ───────────────────────────────── */
+        .examples-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee; }
+        .examples-label { font-size: 0.75rem; color: #888; font-weight: bold; text-transform: uppercase; white-space: nowrap; }
+        .btn-example {
+            border: 1px solid #d0e3f0; background: #f1f8ff; color: var(--dark);
+            padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;
+            font-weight: 600; transition: all 0.15s;
+        }
+        .btn-example:hover { border-color: var(--primary); background: #e0f2fe; }
+        .btn-example.active-ex { border-color: var(--primary); background: #e0f2fe; color: var(--primary); }
+
+        .status-badge { font-size: 0.75rem; padding: 4px 10px; border-radius: 12px; background: #f1f8ff; border: 1px solid #d0e3f0; color: #555; }
+        .status-badge.synthesizing { background: #fff9e6; border-color: #ffe082; color: #e65100; }
+        .status-badge.ready { background: #e8f5e9; border-color: #c8e6c9; color: #2e7d32; }
+
+        .main-grid { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
+        .param-select-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+        .param-select-row label { font-size: 0.75rem; font-weight: bold; color: #666; text-transform: uppercase; }
+        select.param-picker { flex: 1; min-width: 180px; padding: 7px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.9rem; color: var(--dark); background: white; cursor: pointer; }
+        select.param-picker:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(0,173,237,0.2); }
+
+        .active-param-box { background: #f1f8ff; border: 2px solid var(--primary); border-radius: 8px; padding: 16px; }
+        .active-param-name { font-size: 1.1rem; font-weight: bold; color: var(--primary); margin-bottom: 4px; }
+        .active-param-desc { font-size: 0.75rem; color: #666; margin-bottom: 14px; }
+        .slider-row { display: flex; align-items: center; gap: 10px; }
+        input[type=range] { flex: 1; -webkit-appearance: none; height: 6px; border-radius: 3px; background: #d0e3f0; outline: none; cursor: pointer; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--primary); cursor: pointer; box-shadow: 0 1px 4px rgba(0,173,237,0.5); }
+        .slider-value { min-width: 70px; text-align: center; font-size: 1.2rem; font-weight: bold; color: var(--primary); font-variant-numeric: tabular-nums; }
+
+        .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .param-card { background: #fafafa; border: 1px solid #eee; border-radius: 6px; padding: 10px 12px; cursor: pointer; transition: all 0.15s; }
+        .param-card:hover { border-color: var(--primary); background: #f1f8ff; }
+        .param-card-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+        .param-card-name { font-size: 0.75rem; font-weight: bold; color: var(--dark); }
+        .param-card-val { font-size: 0.95rem; font-weight: bold; color: var(--primary); font-variant-numeric: tabular-nums; }
+        .param-bar-bg { background: #e0e0e0; border-radius: 2px; height: 4px; }
+        .param-bar-fill { background: var(--primary); border-radius: 2px; height: 4px; transition: width 0.3s; }
+
+        .chart-legend { display: flex; gap: 16px; flex-wrap: wrap; }
+        .chart-legend span { font-size: 0.7rem; color: #666; display: flex; align-items: center; gap: 5px; }
+        .leg-dot { width: 20px; height: 3px; display: inline-block; border-radius: 2px; }
+
+        .quality-pill { display: inline-block; font-size: 0.68rem; font-weight: bold; padding: 2px 8px; border-radius: 10px; margin-top: 6px; }
+        .q-excellent  { background: #e8f5e9; color: #2e7d32; }
+        .q-good       { background: #e3f2fd; color: #1565c0; }
+        .q-fair       { background: #fff9e6; color: #e65100; }
+        .q-poor       { background: #fce8e6; color: #c62828; }
+        .q-very_poor  { background: #4a0000; color: #ff8a80; font-weight: 900; }
+
+        footer { text-align: center; font-size: 0.7rem; color: #999; margin-top: 30px; }
+
+        @media (max-width: 800px) { .main-grid { grid-template-columns: 1fr; } .room-grid { grid-template-columns: 1fr 1fr 1fr; } }
+        @media (max-width: 540px) { .room-grid { grid-template-columns: 1fr; } .results-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="card">
+        <h1>StudioCalc | Auralización Paramétrica <span style="font-size:0.8rem;color:#aaa;">v2</span></h1>
+        <p style="font-size:0.88rem;color:#666;margin:0">
+            Carga un audio anecóico o usa los ejemplos integrados. Elige una sala, selecciona el parámetro a experimentar
+            y mueve el slider: el resto de los parámetros se actualizan en tiempo real mostrando las consecuencias físicas.
+        </p>
+    </div>
+
+    <div class="card">
+        <h2>1. Sala padrón</h2>
+        <div class="room-grid">
+            <button class="room-btn active" data-room="control" onclick="selectRoom('control')">
+                <span class="icon">🎚️</span><span class="name">Control Room</span>
+                <span class="desc">Fuente: entre monitores → Oyente: posición de mezcla</span>
+            </button>
+            <button class="room-btn" data-room="classroom" onclick="selectRoom('classroom')">
+                <span class="icon">🏫</span><span class="name">Aula Universitaria</span>
+                <span class="desc">Fuente: podio/pizarrón → Oyente: asiento central</span>
+            </button>
+            <button class="room-btn" data-room="concert" onclick="selectRoom('concert')">
+                <span class="icon">🎻</span><span class="name">Sala de Conciertos</span>
+                <span class="desc">Fuente: centro del escenario → Oyente: zona de patio</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>2. Audio anecoico</h2>
+        <div class="audio-row">
+            <label class="file-label" for="fileInput">📂 Tu archivo</label>
+            <input type="file" id="fileInput" accept="audio/*" onchange="loadAudioFile(this)">
+            <span class="file-name" id="fileName">Ningún archivo cargado</span>
+            <button class="btn-play" id="btnPlay" onclick="startPlayback()" disabled>▶ Con sala</button>
+            <button class="btn-play" id="btnDry" onclick="playDry()" disabled style="background:#6a1b9a;">🎧 Sin sala</button>
+            <button class="btn-play btn-stop" id="btnStop" onclick="stopAll()" disabled>⏹ Stop</button>
+            <span class="status-badge" id="statusBadge">Sin audio</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:0.75rem;color:#666;">🔊</span>
+                <input type="range" id="volSlider" min="0" max="100" value="80" style="width:80px;height:5px;" oninput="setVolume(this.value)">
+                <span style="font-size:0.72rem;color:#666;min-width:26px;" id="volLabel">80%</span>
+            </div>
+        </div>
+
+        <!-- NUEVO v2: Ejemplos integrados -->
+        <div class="examples-row">
+            <span class="examples-label">Ejemplos integrados:</span>
+            <button class="btn-example" id="ex-speech" onclick="loadBuiltin('speech')">🎙 Voz sintética (STI/C50)</button>
+            <button class="btn-example" id="ex-piano"  onclick="loadBuiltin('piano')">🎹 Piano (C4, armónicos reales)</button>
+            <button class="btn-example" id="ex-impulse" onclick="loadBuiltin('impulse')">💥 Pistola de arranque</button>
+            <span style="font-size:0.7rem;color:#aaa;margin-left:4px;">Generados con Web Audio API — no requieren archivos externos</span>
+        </div>
+    </div>
+
+    <div class="main-grid">
+        <div class="card">
+            <h2>3. Parámetro en experimento</h2>
+            <div class="param-select-row">
+                <label>Parámetro:</label>
+                <select class="param-picker" id="paramPicker" onchange="selectParam(this.value)">
+                    <optgroup label="Tiempos de reverberación">
+                        <option value="T_mid">T_mid — Reverberación media</option>
+                        <option value="T_low">T_low — Reverberación graves</option>
+                        <option value="T_high">T_high — Reverberación agudos</option>
+                        <option value="EDT">EDT_mid — Decaimiento temprano</option>
+                    </optgroup>
+                    <optgroup label="Claridad y definición">
+                        <option value="C80">C80 — Claridad musical</option>
+                        <option value="C50">C50 — Claridad verbal</option>
+                        <option value="D50">D50 — Definición</option>
+                        <option value="Ts">T_s — Centro de gravedad temporal</option>
+                    </optgroup>
+                    <optgroup label="Inteligibilidad">
+                        <option value="STI">STI — Inteligibilidad de la palabra</option>
+                        <option value="ALcons">%ALcons — Pérdida de articulación</option>
+                    </optgroup>
+                    <optgroup label="Nivel y espacialidad">
+                        <option value="G">G — Factor de fuerza</option>
+                        <option value="ITDG">ITDG — Brecha temporal inicial</option>
+                        <option value="LF">LF — Fracción de energía lateral</option>
+                    </optgroup>
+                    <optgroup label="Ratios espectrales">
+                        <option value="Brillo">Brillo — T_high / T_mid</option>
+                        <option value="Calidez">Calidez — T_low / T_mid</option>
+                    </optgroup>
+                </select>
+            </div>
+            <div class="active-param-box">
+                <div class="active-param-name" id="apName">T_mid</div>
+                <div class="active-param-desc" id="apDesc">Tiempo de reverberación promedio a 500 y 1000 Hz</div>
+                <div class="slider-row" style="margin-top:10px;">
+                    <span style="font-size:0.72rem;color:#888;" id="apMin">0.1</span>
+                    <input type="range" id="paramSlider" min="0" max="100" value="50" oninput="onSliderInput(this.value)">
+                    <span style="font-size:0.72rem;color:#888;" id="apMax">4.0</span>
+                </div>
+                <div style="text-align:center;margin-top:6px;">
+                    <span class="slider-value" id="sliderDisplay">—</span>
+                </div>
+                <div id="qualityPill" style="text-align:center;margin-top:6px;"></div>
+                <!-- Nota pedagógica — visible solo en parámetros con advertencia académica -->
+                <div id="pedagNote" style="display:none;margin-top:10px;background:#fff9e6;
+                     border-left:3px solid #ffb400;padding:10px 12px;border-radius:0 4px 4px 0;">
+                    <div style="font-size:0.72rem;font-weight:bold;color:#e65100;margin-bottom:3px;">
+                        📌 Nota académica
+                    </div>
+                    <div id="pedagNoteText" style="font-size:0.73rem;color:#5d4037;line-height:1.45;"></div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="card">
+            <h2>4. Parámetros resultantes <span style="font-weight:normal;font-size:0.8rem;color:#999;">(calculados de la IR)</span></h2>
+            <div class="results-grid" id="resultsGrid"></div>
+        </div>
+    </div>
+
+    <!-- Gráfico IR + Curva de Schroeder — ancho completo -->
+    <div class="card">
+        <h2>5. Respuesta al Impulso + Curva de Schroeder</h2>
+        <div style="position:relative; height:300px; width:100%;">
+            <canvas id="irChart"></canvas>
+        </div>
+        <div class="chart-legend" style="margin-top:8px;">
+            <span><span class="leg-dot" style="background:rgba(0,173,237,0.5);"></span> |h(t)| (eje izq.)</span>
+            <span><span class="leg-dot" style="background:#ff7043;"></span> Curva de Schroeder dB (eje der.)</span>
+            <span><span class="leg-dot" style="background:rgba(255,112,67,0.4);border-top:2px dashed #ff7043;"></span> −10 dB (referencia EDT)</span>
+            <span><span class="leg-dot" style="background:rgba(150,150,150,0.4);border-top:2px dashed #9e9e9e;"></span> −60 dB (referencia T60)</span>
+        </div>
+    </div>
+
+    <footer>Prof. Ricardo Cabrera V. | Web Audio API — sin librerías externas de audio</footer>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════════
+//  DEFINICIONES DE PARÁMETROS
+// ═══════════════════════════════════════════════════════════════════
+const PARAM_DEFS = {
+    // Rangos ampliados para incluir valores malos/muy malos — experiencia pedagógica completa
+    T_mid:   { name:'T_mid',   unit:'s',  min:0.05, max:6.0,  step:0.05, decimals:2, desc:'Tiempo de reverberación promedio a 500 y 1000 Hz (ISO 3382-1). Es el parámetro base de cualquier descripción acústica.' },
+    T_low:   { name:'T_low',   unit:'s',  min:0.05, max:8.0,  step:0.05, decimals:2, desc:'Tiempo de reverberación a bajas frecuencias (125–250 Hz). Valores altos dan "calidez" excesiva; muy altos generan rumble.' },
+    T_high:  { name:'T_high',  unit:'s',  min:0.05, max:5.0,  step:0.05, decimals:2, desc:'Tiempo de reverberación a altas frecuencias (2000–4000 Hz). Valores bajos dan una sala "opaca"; muy altos suenan chirriosamente brillantes.' },
+    EDT:     { name:'EDT_mid', unit:'s',  min:0.03, max:6.0,  step:0.05, decimals:2, desc:'Early Decay Time: pendiente de los primeros 10 dB de decaimiento (ISO 3382-1). Determina la reverberación percibida; puede diferir del TR si hay diseño no difuso.' },
+    C80:     { name:'C80',     unit:'dB', min:-12,  max:20,   step:0.5,  decimals:1,
+               desc:'Claridad musical (ISO 3382-1): energía 0–80 ms vs. energía posterior.',
+               note:'En sala real, C80 y TR son parámetros parcialmente independientes. El diseño geométrico (reflexiones tempranas de techo y paredes laterales) puede mejorar C80 sin reducir el TR. Este simulador asume campo difuso estadístico puro, lo que sobreestima su acoplamiento: en realidad un buen diseño acústico optimiza ambos por separado.' },
+    C50:     { name:'C50',     unit:'dB', min:-12,  max:20,   step:0.5,  decimals:1,
+               desc:'Claridad verbal (ISO 3382-1): energía 0–50 ms vs. energía posterior.',
+               note:'Al igual que C80, en sala real C50 y TR son parcialmente independientes. Dirigir reflexiones tempranas hacia el oyente mejora C50 sin cambiar el TR. El modelo usado aquí (campo difuso) no captura esta flexibilidad del diseño: tómalo como límite inferior de lo que se puede lograr acústicamente.' },
+    D50:     { name:'D50',     unit:'%',  min:3,    max:98,   step:1,    decimals:0,
+               desc:'Definición: fracción de energía en los primeros 50 ms. D50 = 100 × E(0–50ms) / E(total) (%).' },
+    Ts:      { name:'T_s',     unit:'ms', min:5,    max:350,  step:5,    decimals:0,
+               desc:'Centro de gravedad temporal de la IR (ms). Describe la reverberación percibida de forma continua; equivalente a C50 pero en dominio temporal lineal.' },
+    STI:     { name:'STI',     unit:'',   min:0.10, max:0.98, step:0.01, decimals:2,
+               desc:'STI teórico por reverberación únicamente (IEC 60268-16). Valor máximo posible para el TR dado.',
+               note:'Este STI asume SNR = ∞ (sin ruido de fondo). En sala real el ruido ambiental siempre reduce el STI por debajo del valor mostrado. El STI real = STI_reverb × factor_SNR. Para HVAC silencioso (~NC-35) la diferencia es ~10–15%; en escuelas con ruido exterior puede superar el 30%.' },
+    ALcons:  { name:'%ALcons', unit:'%',  min:1,    max:50,   step:0.5,  decimals:1,
+               desc:'Porcentaje de pérdida de articulación de consonantes teórico (Peutz/Lochner).',
+               note:'Derivado del STI teórico, por lo que también asume ausencia de ruido de fondo. En sala real con ruido ambiental, el %ALcons medido es siempre mayor que el calculado aquí. Un %ALcons real por encima del 15% indica problemas graves de inteligibilidad.' },
+    G:       { name:'G',       unit:'dB', min:-10,  max:16,   step:0.5,  decimals:1, desc:'Factor de fuerza: nivel sonoro relativo al de una fuente omnidireccional a 10 m en campo libre (ISO 3382-1).' },
+    ITDG:    { name:'ITDG',    unit:'ms', min:2,    max:150,  step:1,    decimals:0, desc:'Initial Time Delay Gap: tiempo de silencio entre el sonido directo y la primera reflexión significativa.' },
+    LF:      { name:'LF',      unit:'',   min:0.02, max:0.50, step:0.01, decimals:2,
+               desc:'Lateral Energy Fraction: fracción de energía 0–80 ms procedente de los lados (ISO 3382-1). Determina la sensación de anchura espacial y envolvencia.',
+               note:'🎧 Este parámetro REQUIERE AUDÍFONOS para percibirse correctamente. La simulación usa una IR estéreo decorrelada (L ≠ R). Con altavoces, el crosstalk (el canal L llega también al oído derecho y viceversa) cancela gran parte del efecto lateral. En sala real las reflexiones llegan físicamente desde los lados; aquí se aproxima con decorrelación binaural.' },
+    Brillo:  { name:'Brillo',  unit:'',   min:0.20, max:2.0,  step:0.05, decimals:2, desc:'Brillo = T_high / T_mid. >1 → sala brillante; <0.7 → sala opaca en agudos.' },
+    Calidez: { name:'Calidez', unit:'',   min:0.4,  max:3.0,  step:0.05, decimals:2, desc:'Calidez = T_low / T_mid (Bass Ratio). >1.2 → sala cálida; <0.9 → sala fría/anémica en graves.' },
+};
+
+// ═══════════════════════════════════════════════════════════════════
+//  PLANTILLAS DE SALA
+// ═══════════════════════════════════════════════════════════════════
+const ROOMS = {
+    control:   { label:'Control Room',        T_mid:0.35, T_low:0.40, T_high:0.25, EDT:0.28, ITDG:10,  G:2.0, LF:0.12, earlyRef:[[8,-9],[12,-12],[17,-11],[22,-14],[28,-15],[35,-18]] },
+    classroom: { label:'Aula Universitaria',  T_mid:0.85, T_low:1.05, T_high:0.65, EDT:0.70, ITDG:28,  G:4.5, LF:0.20, earlyRef:[[20,-7],[32,-9],[45,-11],[60,-14],[75,-16]] },
+    concert:   { label:'Sala de Conciertos',  T_mid:2.20, T_low:2.80, T_high:1.70, EDT:1.95, ITDG:25,  G:8.0, LF:0.28, earlyRef:[[18,-6],[27,-8],[36,-9],[50,-11],[65,-12],[80,-14]] },
+};
+const ROOM_VOL = { control:80, classroom:400, concert:18000 };
+
+// ═══════════════════════════════════════════════════════════════════
+//  FÓRMULAS ANALÍTICAS
+// ═══════════════════════════════════════════════════════════════════
+const T60_to_C80 = T => 10*Math.log10(Math.exp(2*6.908*0.08/T)-1);
+const C80_to_T60 = C => 2*6.908*0.08/Math.log(Math.pow(10,C/10)+1);
+const T60_to_C50 = T => 10*Math.log10(Math.exp(2*6.908*0.05/T)-1);
+const C50_to_T60 = C => 2*6.908*0.05/Math.log(Math.pow(10,C/10)+1);
+const T60_to_D50 = T => { const r=Math.pow(10,T60_to_C50(T)/10); return r/(1+r)*100; };
+const D50_to_T60 = D => { const d=D/100; return C50_to_T60(10*Math.log10(d/(1-d))); };
+const T60_to_Ts  = T => T/(2*6.908)*1000;
+const Ts_to_T60  = ms => ms*2*6.908/1000;
+const T60_to_G   = (T,V) => 10*Math.log10(T*344*344/(25.1*V))+45;
+
+function T60_to_STI(T60) {
+    const Fm=[0.63,0.8,1,1.25,1.6,2,2.5,3.15,4,5,6.3,8,10,12.5];
+    const a=13.816/T60; let s=0;
+    for(const F of Fm){ const m=a/Math.sqrt(a*a+(2*Math.PI*F)**2); const snr=10*Math.log10(Math.max(m/(1-m+1e-9),1e-9)); s+=Math.max(0,Math.min(1,(snr+15)/30)); }
+    return s/Fm.length;
+}
+function STI_to_T60(sti){ let lo=0.05,hi=6; for(let i=0;i<60;i++){ const m=(lo+hi)/2; if(T60_to_STI(m)>sti)lo=m;else hi=m; } return (lo+hi)/2; }
+const STI_to_ALcons = s => Math.min(100,170.5405*Math.exp(-5.419*s));
+const ALcons_to_T60 = a => STI_to_T60(Math.max(0.1,Math.min(0.95,-Math.log(a/170.5405)/5.419)));
+
+// ═══════════════════════════════════════════════════════════════════
+//  ESTADO
+// ═══════════════════════════════════════════════════════════════════
+const state = { room:'control', param:'T_mid', paramValue:0.35, audioCtx:null, gainNode:null,
+                anechoicBuffer:null, convBuffer:null, activeSource:null, irChart:null, synthTimeout:null };
+
+// ═══════════════════════════════════════════════════════════════════
+//  SÍNTESIS DE IR
+// ═══════════════════════════════════════════════════════════════════
+function bpFilter(x, sr, fc) {
+    const Q=1.41, w=2*Math.PI*fc/sr, alpha=Math.sin(w)/(2*Q);
+    const b0=alpha,b1=0,b2=-alpha,a0=1+alpha,a1=-2*Math.cos(w),a2=1-alpha;
+    const y=new Float32Array(x.length); let xp=0,xpp=0,yp=0,ypp=0;
+    for(let i=0;i<x.length;i++){ y[i]=(b0*x[i]+b1*xp+b2*xpp-a1*yp-a2*ypp)/a0; xpp=xp;xp=x[i];ypp=yp;yp=y[i]; }
+    return y;
+}
+function sfc32(a,b,c,d){ return ()=>{ a|=0;b|=0;c|=0;d|=0; let t=(a+b|0)+d|0;d=d+1|0;a=b^b>>>9;b=c+(c<<3)|0;c=c<<21|c>>>11;c=c+t|0; return (t>>>0)/4294967296; }; }
+
+function synthesizeIR(sr, roomId, paramId, targetVal) {
+    const room=ROOMS[roomId];
+    let T_mid=room.T_mid,T_low=room.T_low,T_high=room.T_high,EDT=room.EDT,ITDG=room.ITDG,G_val=room.G,LF_val=room.LF;
+    const sc=(v)=>({ T_low:v*(room.T_low/room.T_mid),T_high:v*(room.T_high/room.T_mid),EDT:v*(room.EDT/room.T_mid) });
+    switch(paramId){
+        case 'T_mid':  T_mid=targetVal;Object.assign({T_low,T_high,EDT},sc(targetVal));T_low=sc(targetVal).T_low;T_high=sc(targetVal).T_high;EDT=sc(targetVal).EDT;break;
+        case 'T_low':  T_low=targetVal;break;
+        case 'T_high': T_high=targetVal;break;
+        case 'EDT':    EDT=targetVal;break;
+        case 'C80':    {const t=C80_to_T60(targetVal);T_mid=t;T_low=t*(room.T_low/room.T_mid);T_high=t*(room.T_high/room.T_mid);EDT=t*(room.EDT/room.T_mid);}break;
+        case 'C50':    {const t=C50_to_T60(targetVal);T_mid=t;T_low=t*(room.T_low/room.T_mid);T_high=t*(room.T_high/room.T_mid);EDT=t*(room.EDT/room.T_mid);}break;
+        case 'D50':    {const t=D50_to_T60(targetVal);T_mid=t;T_low=t*(room.T_low/room.T_mid);T_high=t*(room.T_high/room.T_mid);EDT=t*(room.EDT/room.T_mid);}break;
+        case 'Ts':     {const t=Ts_to_T60(targetVal);T_mid=t;T_low=t*(room.T_low/room.T_mid);T_high=t*(room.T_high/room.T_mid);EDT=t*(room.EDT/room.T_mid);}break;
+        case 'STI':    {const t=STI_to_T60(targetVal);T_mid=t;T_low=t*(room.T_low/room.T_mid);T_high=t*(room.T_high/room.T_mid);EDT=t*(room.EDT/room.T_mid);}break;
+        case 'ALcons': {const t=ALcons_to_T60(targetVal);T_mid=t;T_low=t*(room.T_low/room.T_mid);T_high=t*(room.T_high/room.T_mid);EDT=t*(room.EDT/room.T_mid);}break;
+        case 'G':      G_val=targetVal;break;
+        case 'ITDG':   ITDG=targetVal;break;
+        case 'LF':     LF_val=targetVal;break;
+        case 'Brillo': T_high=targetVal*T_mid;break;
+        case 'Calidez':T_low=targetVal*T_mid;break;
+    }
+    T_mid=Math.max(0.05,T_mid); T_low=Math.max(0.05,T_low); T_high=Math.max(0.05,T_high); EDT=Math.max(0.05,EDT);
+    const N=Math.ceil(sr*Math.min(5,Math.max(1.5,T_mid*3.5)));
+    const ir=new Float32Array(N);
+    const itdgS=Math.round(ITDG*sr/1000);
+    const bands=[{fc:63,T60:T_low*1.10,gain:0.60},{fc:125,T60:T_low,gain:0.80},{fc:250,T60:(T_low+T_mid)/2,gain:0.90},
+                 {fc:500,T60:T_mid,gain:1.00},{fc:1000,T60:T_mid,gain:1.00},{fc:2000,T60:T_high,gain:0.85},
+                 {fc:4000,T60:T_high*0.85,gain:0.70},{fc:8000,T60:T_high*0.65,gain:0.45}];
+    const rng=sfc32(0x9e3779b9,0x243f6a88,0xb7e15162,0x37122);
+    for(const b of bands){
+        const tau=b.T60/6.908, raw=new Float32Array(N);
+        for(let i=itdgS;i<N;i++) raw[i]=(rng()*2-1)*Math.exp(-(i-itdgS)/(sr*tau))*b.gain;
+        const filt=bpFilter(raw,sr,b.fc);
+        for(let i=0;i<N;i++) ir[i]+=filt[i];
+    }
+    if(Math.abs(EDT-T_mid)>0.02){
+        const es=Math.round(0.025*sr),st=itdgS,en=Math.min(st+es,N);
+        const gE=Math.exp(-6.908*es/(sr*EDT)),gT=Math.exp(-6.908*es/(sr*T_mid));
+        const f=gE/(gT+1e-9);
+        for(let i=st;i<en;i++) ir[i]*=1+(f-1)*(1-(i-st)/es);
+    }
+    const iShift=ITDG/room.ITDG;
+    for(const [tms,gdB] of room.earlyRef){ const ts=Math.round(tms*iShift*sr/1000); if(ts<N) ir[ts]+=Math.pow(10,gdB/20); }
+    ir[0]=1.0;
+
+    // Normalización por energía RMS (preserva diferencias de G)
+    let energy=0; for(let i=1;i<N;i++) energy+=ir[i]*ir[i];
+    const rms=energy>0?Math.sqrt(energy/(N-1)):1;
+    for(let i=1;i<N;i++) ir[i]/=rms;
+    const gLin=Math.pow(10,(G_val-room.G)/20);
+    for(let i=0;i<N;i++) ir[i]*=gLin;
+
+    // ── LF: síntesis de IR estéreo ────────────────────────────────────────
+    // Canal L: contiene energía lateral (reflexiones de paredes laterales)
+    // Canal R: reflexiones frontales y directas
+    // La energía lateral en 0–80 ms / energía total 0–80 ms ≈ LF_val
+    // Se usa una segunda fuente de ruido decorrelada para el componente lateral.
+    const irL=new Float32Array(N), irR=new Float32Array(N);
+
+    // Ruido lateral: decorrelado, predominantemente frecuencias medias-bajas
+    const rng2=sfc32(0xdeadbeef,0x12345678,0xabcdef01,0xfedcba98);
+    const latRaw=new Float32Array(N);
+    for(let i=itdgS;i<N;i++){
+        const t_rel=i-itdgS;
+        // Decae ligeramente más rápido que el campo difuso (laterales llegan antes)
+        latRaw[i]=(rng2()*2-1)*Math.exp(-t_rel/(sr*Math.max(0.05,T_mid*0.8)/6.908));
+    }
+    const latFilt=bpFilter(latRaw,sr,350); // Energía lateral principalmente 200–700 Hz
+
+    // Factor de mezcla para lograr la fracción lateral deseada
+    const latGain=Math.sqrt(LF_val/(1-LF_val+0.01))*0.6;
+
+    for(let i=0;i<N;i++){
+        const lat=latFilt[i]*latGain;
+        irL[i]=Math.max(-1,Math.min(1,(ir[i]+lat)*gLin)); // L: suma (energía lateral)
+        irR[i]=Math.max(-1,Math.min(1,(ir[i]-lat)*gLin)); // R: diferencia (resta lateral)
+    }
+    return {L:irL, R:irR};
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  NUEVO v2: CURVA DE SCHROEDER
+// ═══════════════════════════════════════════════════════════════════
+function computeSchroeder(ir) {
+    const N=ir.length, energy=new Float32Array(N);
+    energy[N-1]=ir[N-1]*ir[N-1];
+    for(let i=N-2;i>=0;i--) energy[i]=energy[i+1]+ir[i]*ir[i];
+    const maxE=energy[0]>0?energy[0]:1, sch=new Float32Array(N);
+    for(let i=0;i<N;i++) sch[i]=10*Math.log10(energy[i]/maxE+1e-12);
+    return sch;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  NUEVO v2: GENERADORES DE AUDIO SINTÉTICO
+// ═══════════════════════════════════════════════════════════════════
+async function generateSpeech(audioCtx) {
+    // Señal de tipo vocal: armónicos con decaimiento natural + modulación silábica (~4 Hz)
+    // + componente de aspiración (ruido) + vibrato leve.
+    // Mucho más convincente que un simple oscilador en dientes de sierra.
+    const dur=3.0, sr=audioCtx.sampleRate, N=Math.ceil(sr*dur);
+    const buf=audioCtx.createBuffer(1,N,sr), data=buf.getChannelData(0);
+    const rng=sfc32(0x56781234,0xabcdef09,0x13572468,0xfedcba01);
+    const F0=125; // fundamental masculino (Hz)
+    // Amplitudes armónicas: caída ~1/n² para timbre más natural (no dientes de sierra)
+    const hAmps=[1.00,0.60,0.35,0.22,0.14,0.09,0.07,0.05,0.04,0.03];
+    for(let i=0;i<N;i++){
+        const t=i/sr;
+        // Vibrato suave: ±3 Hz a 5.2 Hz
+        const vib=1+(Math.sin(2*Math.PI*5.2*t)*0.024);
+        // Componente armónica (parte "vocea")
+        let voiced=0;
+        for(let n=0;n<hAmps.length;n++) voiced+=hAmps[n]*Math.sin(2*Math.PI*F0*(n+1)*vib*t);
+        // Componente de aspiración (ruido de banda media — "h" y fricativas)
+        const breath=(rng()*2-1)*0.25;
+        // Mezcla voz/aspiración
+        const mix=voiced*0.75+breath*0.25;
+        // Modulación silábica a 4.1 Hz (simula ritmo de sílabas)
+        const syl=Math.pow(Math.max(0,Math.sin(2*Math.PI*4.1*t)),0.6);
+        // Envolvente de entrada y salida
+        const env=Math.min(1,t/0.06)*Math.min(1,(dur-t)/0.18);
+        data[i]=mix*syl*env*0.18;
+    }
+    return buf;
+}
+
+async function generatePiano(audioCtx) {
+    // Piano C4 (261.63 Hz): suma de armónicos con decaimientos independientes
+    const dur=3.5, sr=audioCtx.sampleRate, N=Math.ceil(sr*dur);
+    const buf=audioCtx.createBuffer(1,N,sr), data=buf.getChannelData(0);
+    const f0=261.63;
+    const harmonics=[
+        [1,1.00,2.5],[2,0.55,1.8],[3,0.38,1.3],[4,0.22,0.9],
+        [5,0.14,0.7],[6,0.09,0.55],[7,0.07,0.45],[8,0.05,0.35],[9,0.04,0.28],[10,0.03,0.22],
+    ];
+    for(let i=0;i<N;i++){
+        const t=i/sr, att=Math.min(1,t/0.008); // 8ms attack
+        let s=0;
+        for(const [n,amp,dec] of harmonics) s+=amp*Math.sin(2*Math.PI*f0*n*t)*Math.exp(-t/dec);
+        data[i]=s*att*0.22;
+    }
+    return buf;
+}
+
+async function generateImpulse(audioCtx) {
+    // Pistola de arranque: burst de ruido con envolvente muy rápida
+    const dur=1.0, sr=audioCtx.sampleRate, N=Math.ceil(sr*dur);
+    const buf=audioCtx.createBuffer(1,N,sr), data=buf.getChannelData(0);
+    const rng=sfc32(0xdeadbeef,0xcafe1234,0xabcd5678,0x12345678);
+    const burstMs=8, burstN=Math.round(sr*burstMs/1000);
+    for(let i=0;i<burstN;i++){
+        const t=i/sr;
+        // Doble pico: onda de presión + reflexión interna del cañón
+        data[i]=(rng()*2-1)*Math.exp(-t/0.0008)*0.9;
+    }
+    // Pequeño eco interno a ~3ms
+    const echoN=Math.round(sr*0.003);
+    for(let i=echoN;i<echoN+Math.round(sr*0.004);i++){
+        const t=(i-echoN)/sr;
+        data[i]+=(rng()*2-1)*Math.exp(-t/0.0005)*0.35;
+    }
+    return buf;
+}
+
+async function loadBuiltin(type) {
+    ensureAudioCtx();
+    setBadge('Generando…','synthesizing');
+    document.getElementById('fileName').textContent = {
+        speech:'🗣 Voz (vocal sintética)', piano:'🎹 Piano C4', impulse:'💥 Pistola de arranque'
+    }[type];
+    // Resaltar botón activo
+    ['speech','piano','impulse'].forEach(t=>{
+        document.getElementById('ex-'+t).classList.toggle('active-ex', t===type);
+    });
+    try {
+        state.anechoicBuffer = type==='speech' ? await generateSpeech(state.audioCtx)
+                             : type==='piano'   ? await generatePiano(state.audioCtx)
+                             :                    await generateImpulse(state.audioCtx);
+        document.getElementById('btnPlay').disabled=false;
+        document.getElementById('btnDry').disabled=false;
+        setBadge('Listo','ready');
+        scheduleSynth();
+    } catch(e) { console.error(e); setBadge('Error',''); }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  AUDIO WEB
+// ═══════════════════════════════════════════════════════════════════
+function ensureAudioCtx(){
+    if(!state.audioCtx){
+        state.audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+        state.gainNode=state.audioCtx.createGain(); state.gainNode.gain.value=0.80;
+        state.gainNode.connect(state.audioCtx.destination);
+    }
+    if(state.audioCtx.state==='suspended') state.audioCtx.resume();
+}
+function setVolume(pct){ document.getElementById('volLabel').textContent=pct+'%'; if(state.gainNode) state.gainNode.gain.setTargetAtTime(pct/100,state.audioCtx.currentTime,0.02); }
+
+async function loadAudioFile(input){
+    if(!input.files||!input.files.length) return;
+    const file=input.files[0];
+    document.getElementById('fileName').textContent=file.name;
+    setBadge('Cargando…','synthesizing');
+    ['speech','piano','impulse'].forEach(t=>document.getElementById('ex-'+t).classList.remove('active-ex'));
+    try{
+        ensureAudioCtx();
+        const ab=await file.arrayBuffer();
+        state.anechoicBuffer=await new Promise((res,rej)=>state.audioCtx.decodeAudioData(ab,res,rej));
+        document.getElementById('btnPlay').disabled=false;
+        document.getElementById('btnDry').disabled=false;
+        document.getElementById('btnStop').disabled=true;
+        setBadge('Listo','ready'); scheduleSynth();
+    }catch(e){ console.error(e); document.getElementById('fileName').textContent='⚠ Error: '+e.message; setBadge('Error',''); }
+}
+
+function stopAll(){
+    // Bajar el gain a 0 en 40 ms corta tanto el source como la cola del ConvolverNode
+    if(state.gainNode && state.audioCtx){
+        const now=state.audioCtx.currentTime;
+        state.gainNode.gain.cancelScheduledValues(now);
+        state.gainNode.gain.setValueAtTime(state.gainNode.gain.value, now);
+        state.gainNode.gain.linearRampToValueAtTime(0, now+0.04);
+    }
+    if(state.activeSource){ try{state.activeSource.stop();}catch(e){} state.activeSource=null; }
+    // Restaurar volumen tras el silencio
+    const vol=(parseInt(document.getElementById('volSlider').value)||80)/100;
+    setTimeout(()=>{ if(state.gainNode&&state.audioCtx) state.gainNode.gain.setTargetAtTime(vol,state.audioCtx.currentTime,0.02); },100);
+    updateTransportUI(false);
+}
+function startPlayback(){
+    if(!state.anechoicBuffer||!state.convBuffer) return; stopAll(); ensureAudioCtx();
+    setTimeout(()=>{
+        const conv=state.audioCtx.createConvolver(); conv.buffer=state.convBuffer;
+        const src=state.audioCtx.createBufferSource(); src.buffer=state.anechoicBuffer; src.loop=true;
+        src.connect(conv); conv.connect(state.gainNode);
+        src.start(); state.activeSource=src;
+        src.onended=()=>{state.activeSource=null;updateTransportUI(false);};
+        updateTransportUI(true,'room');
+    },120); // espera a que el gain suba después del stop previo
+}
+function playDry(){
+    if(!state.anechoicBuffer) return; stopAll(); ensureAudioCtx();
+    setTimeout(()=>{
+        const src=state.audioCtx.createBufferSource(); src.buffer=state.anechoicBuffer; src.loop=true;
+        src.connect(state.gainNode); src.start(); state.activeSource=src;
+        src.onended=()=>{state.activeSource=null;updateTransportUI(false);};
+        updateTransportUI(true,'dry');
+    },120);
+}
+function updateTransportUI(playing,mode){
+    document.getElementById('btnStop').disabled=!playing;
+    document.getElementById('btnPlay').style.opacity=(!playing||mode==='room')?'1':'0.5';
+    document.getElementById('btnDry').style.opacity=(!playing||mode==='dry')?'1':'0.5';
+}
+function setBadge(txt,cls){ const el=document.getElementById('statusBadge'); el.textContent=txt; el.className='status-badge'+(cls?' '+cls:''); }
+
+// IR ahora siempre es estéreo {L, R}
+function stereoToAudioBuf(ir, sr){
+    const b=state.audioCtx.createBuffer(2,ir.L.length,sr);
+    b.getChannelData(0).set(ir.L);
+    b.getChannelData(1).set(ir.R);
+    return b;
+}
+
+function scheduleSynth(){
+    clearTimeout(state.synthTimeout);
+    setBadge('Sintetizando…','synthesizing');
+    state.synthTimeout=setTimeout(()=>{
+        const sr=state.audioCtx?state.audioCtx.sampleRate:44100;
+        const ir=synthesizeIR(sr,state.room,state.param,state.paramValue);
+        ensureAudioCtx();
+        state.convBuffer=stereoToAudioBuf(ir,sr);
+        drawIRAndSchroeder(ir.L,sr); // visualizar canal izquierdo
+        setBadge('Listo','ready');
+    },320);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  NUEVO v2: GRÁFICO IR + SCHROEDER
+// ═══════════════════════════════════════════════════════════════════
+function drawIRAndSchroeder(ir, sr) {
+    const maxShow=Math.min(ir.length,Math.ceil(sr*2.5));
+    const step=Math.max(1,Math.floor(maxShow/400));
+    const sch=computeSchroeder(ir);
+    const labels=[],irPts=[],schPts=[];
+    for(let i=0;i<maxShow;i+=step){
+        labels.push((i/sr*1000).toFixed(0));
+        irPts.push(Math.abs(ir[i]));
+        schPts.push(Math.max(-65,sch[i]));
+    }
+    const ctx=document.getElementById('irChart').getContext('2d');
+    if(state.irChart) state.irChart.destroy();
+    const n=labels.length;
+    state.irChart=new Chart(ctx,{
+        type:'line',
+        data:{labels,datasets:[
+            { label:'|h(t)|', data:irPts, borderColor:'rgba(0,173,237,0.55)', borderWidth:1, pointRadius:0, fill:true, backgroundColor:'rgba(0,173,237,0.07)', yAxisID:'y', order:2 },
+            { label:'Schroeder (dB)', data:schPts, borderColor:'#ff7043', borderWidth:2, pointRadius:0, fill:false, yAxisID:'y1', order:1 },
+            { label:'-10 dB (EDT ref.)', data:Array(n).fill(-10), borderColor:'rgba(255,112,67,0.35)', borderWidth:1, borderDash:[5,4], pointRadius:0, fill:false, yAxisID:'y1', order:3 },
+            { label:'-60 dB (T60 ref.)', data:Array(n).fill(-60), borderColor:'rgba(150,150,150,0.35)', borderWidth:1, borderDash:[5,4], pointRadius:0, fill:false, yAxisID:'y1', order:3 },
+        ]},
+        options:{
+            responsive:true, maintainAspectRatio:false, animation:false,
+            interaction:{mode:'index',intersect:false},
+            plugins:{ legend:{display:false} },
+            scales:{
+                x:{ title:{display:true,text:'ms',font:{size:9}}, ticks:{maxTicksLimit:8,font:{size:8}}, grid:{color:'#f4f4f4'} },
+                y:{ title:{display:true,text:'|h(t)|',font:{size:8}}, min:0, ticks:{font:{size:8},maxTicksLimit:4}, grid:{color:'#f4f4f4'}, position:'left' },
+                y1:{ title:{display:true,text:'dB',font:{size:8}}, min:-65, max:5, ticks:{font:{size:8},maxTicksLimit:6}, grid:{display:false}, position:'right' }
+            }
+        }
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  CÁLCULO ANALÍTICO DE PARÁMETROS
+// ═══════════════════════════════════════════════════════════════════
+function deriveParams(roomId, paramId, val){
+    const r=ROOMS[roomId];
+    let T_mid=r.T_mid,T_low=r.T_low,T_high=r.T_high,EDT=r.EDT,ITDG=r.ITDG,G_val=r.G,LF_val=r.LF;
+    const scl=(t)=>{T_low=t*(r.T_low/r.T_mid);T_high=t*(r.T_high/r.T_mid);EDT=t*(r.EDT/r.T_mid);};
+    switch(paramId){
+        case 'T_mid': T_mid=val;scl(val);break; case 'T_low': T_low=val;break; case 'T_high': T_high=val;break;
+        case 'EDT': EDT=val;break; case 'G': G_val=val;break; case 'ITDG': ITDG=val;break; case 'LF': LF_val=val;break;
+        case 'C80': {const t=C80_to_T60(val);T_mid=t;scl(t);}break;
+        case 'C50': {const t=C50_to_T60(val);T_mid=t;scl(t);}break;
+        case 'D50': {const t=D50_to_T60(val);T_mid=t;scl(t);}break;
+        case 'Ts':  {const t=Ts_to_T60(val);T_mid=t;scl(t);}break;
+        case 'STI': {const t=STI_to_T60(val);T_mid=t;scl(t);}break;
+        case 'ALcons':{const t=ALcons_to_T60(val);T_mid=t;scl(t);}break;
+        case 'Brillo': T_high=val*T_mid;break; case 'Calidez': T_low=val*T_mid;break;
+    }
+    T_mid=Math.max(0.05,T_mid); T_low=Math.max(0.05,T_low); T_high=Math.max(0.05,T_high);
+    const STI=T60_to_STI(T_mid), V=ROOM_VOL[roomId];
+    return { T_mid,T_low,T_high,EDT, C80:T60_to_C80(T_mid), C50:T60_to_C50(T_mid), D50:T60_to_D50(T_mid),
+             Ts:T60_to_Ts(T_mid), STI, ALcons:STI_to_ALcons(STI), G:T60_to_G(T_mid,V)+(G_val-r.G),
+             ITDG, LF:LF_val, Brillo:T_high/T_mid, Calidez:T_low/T_mid };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  CALIDAD
+// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
+//  RANGOS DE CALIDAD — bibliografía académica
+//  ISO 3382-1/2, ANSI S12.60, IEC 60268-16, Beranek 2004,
+//  Barron 2010, AES/BBC guidelines para control rooms
+// ═══════════════════════════════════════════════════════════════════
+function getQuality(pid, val, rid) {
+    const CR=rid==='control', CL=rid==='classroom', CH=rid==='concert';
+
+    if(pid==='T_mid'){
+        if(CR){ // AES/BBC: 0.20–0.35 s ideal
+            if(val<0.12||val>1.2) return 'very_poor';
+            if(val<0.18||val>0.70) return 'poor';
+            if(val<=0.20||val>0.50) return 'fair';
+            if(val<=0.35) return 'excellent'; // AES/BBC óptimo
+            return 'good'; // 0.35–0.50
+        }
+        if(CL){ // ANSI S12.60: ≤0.6 s (vol<283 m³) ó ≤0.7 s
+            if(val<0.20||val>2.5) return 'very_poor';
+            if(val<0.30||val>1.5) return 'poor';
+            if(val<0.40||val>1.0) return 'fair';
+            if(val<=0.65) return 'excellent'; // ANSI S12.60
+            return 'good'; // 0.65–1.0 s
+        }
+        if(CH){ // Beranek 2004: 1.8–2.2 s (ocupada, música sinfónica)
+            if(val<0.8||val>5.0) return 'very_poor';
+            if(val<1.2||val>3.5) return 'poor';
+            if(val<1.5||val>2.8) return 'fair';
+            if(val>=1.8&&val<=2.2) return 'excellent';
+            return 'good'; // 1.5–1.8 ó 2.2–2.8
+        }
+    }
+
+    if(pid==='EDT'){
+        if(CR){ if(val<0.08||val>0.80) return 'very_poor'; if(val>0.55) return 'poor'; if(val<=0.30) return 'excellent'; if(val<=0.42) return 'good'; return 'fair'; }
+        if(CL){ if(val<0.15||val>2.0) return 'very_poor'; if(val>1.2) return 'poor'; if(val<0.35||val>0.90) return 'fair'; if(val<=0.65) return 'excellent'; return 'good'; }
+        if(CH){ if(val<0.7||val>4.5) return 'very_poor'; if(val<1.2||val>3.2) return 'poor'; if(val<1.5||val>2.6) return 'fair'; if(val>=1.7&&val<=2.3) return 'excellent'; return 'good'; }
+    }
+
+    if(pid==='C80'){
+        if(CH){ // Beranek 2004: −2 a +2 dB óptimo para música sinfónica
+            if(val<-10||val>15) return 'very_poor';
+            if(val<-6||val>8) return 'poor';
+            if(val<-3||val>5) return 'fair';
+            if(val>=-2&&val<=2) return 'excellent';
+            return 'good'; // ±2–3 dB
+        }
+        if(CR){ // Alta claridad: C80 alto es bueno
+            if(val<-8||val>20) return 'very_poor';
+            if(val<-2) return 'poor';
+            if(val<2) return 'fair';
+            if(val>=5&&val<=15) return 'excellent';
+            return 'good';
+        }
+        if(CL){ if(val<-8) return 'very_poor'; if(val<-3) return 'poor'; if(val<1) return 'fair'; if(val>=3) return 'excellent'; return 'good'; }
+    }
+
+    if(pid==='C50'){
+        if(CH){ if(val<-10) return 'very_poor'; if(val<-5) return 'poor'; if(val<0) return 'fair'; return 'good'; }
+        // Control room y aula: claridad verbal alta deseable
+        if(val<-10) return 'very_poor';
+        if(val<-4) return 'poor';
+        if(val<0) return 'fair';
+        if(val>=3) return 'excellent';
+        return 'good';
+    }
+
+    if(pid==='D50'){
+        if(CH){ // Sala conciertos: D50 moderada (música, no solo habla)
+            if(val<5||val>90) return 'very_poor';
+            if(val<15) return 'poor';
+            if(val>65) return 'fair'; // demasiado definido para música
+            if(val>=28&&val<=50) return 'excellent'; // Barron 2010
+            return 'good';
+        }
+        // Aula y CR: > 50% (ISO 3382-1 recomendación para habla)
+        if(val<5||val>98) return 'very_poor';
+        if(val<20) return 'poor';
+        if(val<35) return 'fair';
+        if(val>=50) return 'excellent';
+        return 'good';
+    }
+
+    if(pid==='Ts'){
+        // ms — relacionado con reverberación percibida
+        if(CR){ if(val<5||val>300) return 'very_poor'; if(val>160) return 'poor'; if(val>90) return 'fair'; if(val<=40) return 'excellent'; return 'good'; }
+        if(CL){ if(val<5||val>350) return 'very_poor'; if(val>200) return 'poor'; if(val>130) return 'fair'; if(val<=75) return 'excellent'; return 'good'; }
+        if(CH){ if(val<15||val>350) return 'very_poor'; if(val>250) return 'poor'; if(val<50||val>190) return 'fair'; if(val>=75&&val<=150) return 'excellent'; return 'good'; }
+    }
+
+    if(pid==='STI'){
+        // IEC 60268-16 tiers: 0.75+ excelente, 0.60–0.75 bueno, 0.45–0.60 justo, <0.45 malo
+        if(CL){ // ANSI S12.60: STI > 0.75
+            if(val<0.20) return 'very_poor'; if(val<0.35) return 'poor';
+            if(val<0.55) return 'fair';      if(val<0.75) return 'good';
+            return 'excellent';
+        }
+        if(CR){
+            if(val<0.30) return 'poor'; if(val<0.55) return 'fair';
+            if(val<0.75) return 'good'; return 'excellent';
+        }
+        if(CH){ // Sala conciertos: menos crítico; 0.40–0.60 típico
+            if(val<0.15) return 'very_poor'; if(val<0.30) return 'poor';
+            if(val<0.42) return 'fair'; if(val<0.58) return 'good'; return 'excellent';
+        }
+    }
+
+    if(pid==='ALcons'){
+        // Inverso del STI (Peutz): <7% excelente, 7–14% bueno, 14–20% justo, >20% malo
+        if(CL){ if(val>45) return 'very_poor'; if(val>25) return 'poor'; if(val>15) return 'fair'; if(val>7) return 'good'; return 'excellent'; }
+        if(CR){ if(val>30) return 'poor'; if(val>15) return 'fair'; if(val>7) return 'good'; return 'excellent'; }
+        if(CH){ if(val>45) return 'very_poor'; if(val>30) return 'poor'; if(val>20) return 'fair'; if(val>12) return 'good'; return 'excellent'; }
+    }
+
+    if(pid==='G'){
+        if(CH){ // Beranek 2004: +4 a +8 dB en salas premiadas
+            if(val<-6||val>16) return 'very_poor';
+            if(val<0||val>12) return 'poor';
+            if(val<2||val>10) return 'fair';
+            if(val>=4&&val<=8) return 'excellent';
+            return 'good';
+        }
+        if(CL){ if(val<-4||val>15) return 'very_poor'; if(val>=3&&val<=9) return 'excellent'; if(val>=0&&val<3||val>9&&val<=12) return 'good'; return 'fair'; }
+        return 'good'; // G menos crítico en CR
+    }
+
+    if(pid==='ITDG'){
+        if(CH){ // Beranek: < 25 ms → "intimidad" acústica
+            if(val>120) return 'very_poor'; if(val>65) return 'poor';
+            if(val>38) return 'fair'; if(val<=25) return 'excellent'; return 'good';
+        }
+        if(CR){ if(val<2||val>70) return 'very_poor'; if(val>30) return 'poor'; if(val>20) return 'fair'; if(val<=12) return 'excellent'; return 'good'; }
+        if(CL){ if(val>100) return 'very_poor'; if(val>55) return 'poor'; if(val>35) return 'fair'; if(val<=22) return 'excellent'; return 'good'; }
+    }
+
+    if(pid==='LF'){
+        if(CH){ // Beranek: LF > 0.20 en mejores salas (envolvencia)
+            if(val<0.02||val>0.48) return 'very_poor';
+            if(val<0.08||val>0.40) return 'poor';
+            if(val<0.14||val>0.34) return 'fair';
+            if(val>=0.20&&val<=0.30) return 'excellent';
+            return 'good';
+        }
+        if(CR){ // Bajo LF deseable para monitoreo preciso
+            if(val>0.42) return 'very_poor'; if(val>0.28) return 'poor';
+            if(val>0.18) return 'fair'; if(val<=0.12) return 'excellent'; return 'good';
+        }
+        if(CL){ if(val>0.44) return 'very_poor'; if(val>0.32) return 'poor'; if(val>=0.10&&val<=0.26) return 'excellent'; return 'good'; }
+    }
+
+    if(pid==='Brillo'){ // T_high/T_mid — Beranek: 0.85–1.10 óptimo
+        if(val<0.22||val>1.9) return 'very_poor';
+        if(val<0.50||val>1.45) return 'poor';
+        if(val<0.70||val>1.28) return 'fair';
+        if(val>=0.85&&val<=1.10) return 'excellent';
+        return 'good';
+    }
+
+    if(pid==='Calidez'){ // T_low/T_mid (Bass Ratio) — Beranek: 1.10–1.45 mejores salas
+        if(CH){
+            if(val<0.4||val>2.8) return 'very_poor';
+            if(val<0.8||val>2.0) return 'poor';
+            if(val<1.0||val>1.55) return 'fair';
+            if(val>=1.10&&val<=1.40) return 'excellent';
+            return 'good';
+        }
+        if(CR){ // Cerca de 1.0 para monitoreo neutro
+            if(val<0.4||val>2.2) return 'very_poor';
+            if(val<0.75||val>1.45) return 'poor';
+            if(val<0.90||val>1.20) return 'fair';
+            if(val>=0.95&&val<=1.10) return 'excellent';
+            return 'good';
+        }
+        if(CL){ if(val<0.5||val>2.5) return 'very_poor'; if(val<0.80||val>1.60) return 'poor'; if(val>=0.90&&val<=1.30) return 'excellent'; return 'good'; }
+    }
+
+    return 'good';
+}
+const QLBL={excellent:'Excelente',good:'Bueno',fair:'Aceptable',poor:'Deficiente',very_poor:'🚫 Muy deficiente'};
+const QCLS={excellent:'q-excellent',good:'q-good',fair:'q-fair',poor:'q-poor',very_poor:'q-very_poor'};
+
+// ═══════════════════════════════════════════════════════════════════
+//  UI
+// ═══════════════════════════════════════════════════════════════════
+function updateResultsGrid(d){
+    const grid=document.getElementById('resultsGrid'); grid.innerHTML='';
+    const all=['T_mid','T_low','T_high','EDT','C80','C50','D50','Ts','STI','ALcons','G','ITDG','LF','Brillo','Calidez'];
+    for(const pid of all){
+        if(pid===state.param) continue;
+        const def=PARAM_DEFS[pid], val=d[pid]; if(val===undefined) continue;
+        const pct=Math.max(0,Math.min(100,(val-def.min)/(def.max-def.min)*100));
+        const fmt=val.toFixed(def.decimals)+(def.unit?' '+def.unit:'');
+        const card=document.createElement('div'); card.className='param-card';
+        card.onclick=()=>switchActiveParam(pid); card.title='Clic para experimentar con '+def.name;
+        card.innerHTML=`<div class="param-card-header"><span class="param-card-name">${def.name}</span><span class="param-card-val">${fmt}</span></div><div class="param-bar-bg"><div class="param-bar-fill" style="width:${pct}%"></div></div>`;
+        grid.appendChild(card);
+    }
+}
+function switchActiveParam(pid){ document.getElementById('paramPicker').value=pid; selectParam(pid); }
+
+function getRoomDefault(rid,pid){
+    const r=ROOMS[rid];
+    const m={T_mid:r.T_mid,T_low:r.T_low,T_high:r.T_high,EDT:r.EDT,ITDG:r.ITDG,G:r.G,LF:r.LF,
+             C80:T60_to_C80(r.T_mid),C50:T60_to_C50(r.T_mid),D50:T60_to_D50(r.T_mid),
+             Ts:T60_to_Ts(r.T_mid),STI:T60_to_STI(r.T_mid),ALcons:STI_to_ALcons(T60_to_STI(r.T_mid)),
+             Brillo:r.T_high/r.T_mid,Calidez:r.T_low/r.T_mid};
+    return m[pid]||PARAM_DEFS[pid].min;
+}
+
+function updateActiveDisplay(){
+    const def=PARAM_DEFS[state.param], fmt=state.paramValue.toFixed(def.decimals)+(def.unit?' '+def.unit:'');
+    document.getElementById('sliderDisplay').textContent=fmt;
+    const q=getQuality(state.param,state.paramValue,state.room);
+    document.getElementById('qualityPill').innerHTML=`<span class="quality-pill ${QCLS[q]}">${QLBL[q]}</span>`;
+}
+
+function onSliderInput(pct){
+    const def=PARAM_DEFS[state.param];
+    state.paramValue=parseFloat((def.min+(pct/100)*(def.max-def.min)).toFixed(def.decimals));
+    updateActiveDisplay();
+    updateResultsGrid(deriveParams(state.room,state.param,state.paramValue));
+    if(state.anechoicBuffer) scheduleSynth();
+}
+
+function selectParam(pid){
+    state.param=pid; const def=PARAM_DEFS[pid];
+    document.getElementById('apName').textContent=def.name;
+    document.getElementById('apDesc').textContent=def.desc;
+    // Nota pedagógica: visible solo si el parámetro tiene advertencia académica
+    const noteEl=document.getElementById('pedagNote');
+    const noteText=document.getElementById('pedagNoteText');
+    if(def.note){ noteText.textContent=def.note; noteEl.style.display='block'; }
+    else { noteEl.style.display='none'; }
+    document.getElementById('apMin').textContent=def.min+(def.unit?' '+def.unit:'');
+    document.getElementById('apMax').textContent=def.max+(def.unit?' '+def.unit:'');
+    const raw=getRoomDefault(state.room,pid);
+    state.paramValue=parseFloat(Math.max(def.min,Math.min(def.max,raw)).toFixed(def.decimals));
+    document.getElementById('paramSlider').value=Math.round((state.paramValue-def.min)/(def.max-def.min)*100);
+    updateActiveDisplay();
+    updateResultsGrid(deriveParams(state.room,pid,state.paramValue));
+    if(state.anechoicBuffer) scheduleSynth();
+}
+
+function selectRoom(rid){
+    state.room=rid;
+    document.querySelectorAll('.room-btn').forEach(b=>b.classList.toggle('active',b.dataset.room===rid));
+    selectParam(state.param);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  ARRANQUE
+// ═══════════════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded',()=>{
+    document.body.addEventListener('click',()=>{if(!state.audioCtx)ensureAudioCtx();},{once:true});
+    // Dibujar IR inicial con sala por defecto (sin AudioContext todavía)
+    const irInit=synthesizeIR(44100,'control','T_mid',ROOMS.control.T_mid);
+    const ir=irInit.L; // canal izquierdo para visualización
+    const ctx2d=document.getElementById('irChart').getContext('2d');
+    const maxShow=Math.min(ir.length,Math.ceil(44100*2.5)), step=Math.max(1,Math.floor(maxShow/400));
+    const sch=computeSchroeder(ir), labels=[],irPts=[],schPts=[];
+    for(let i=0;i<maxShow;i+=step){ labels.push((i/44100*1000).toFixed(0)); irPts.push(Math.abs(ir[i])); schPts.push(Math.max(-65,sch[i])); }
+    const n=labels.length;
+    state.irChart=new Chart(ctx2d,{
+        type:'line', data:{labels,datasets:[
+            {data:irPts,borderColor:'rgba(0,173,237,0.55)',borderWidth:1,pointRadius:0,fill:true,backgroundColor:'rgba(0,173,237,0.07)',yAxisID:'y',order:2},
+            {data:schPts,borderColor:'#ff7043',borderWidth:2,pointRadius:0,fill:false,yAxisID:'y1',order:1},
+            {data:Array(n).fill(-10),borderColor:'rgba(255,112,67,0.35)',borderWidth:1,borderDash:[5,4],pointRadius:0,fill:false,yAxisID:'y1',order:3},
+            {data:Array(n).fill(-60),borderColor:'rgba(150,150,150,0.35)',borderWidth:1,borderDash:[5,4],pointRadius:0,fill:false,yAxisID:'y1',order:3},
+        ]},
+        options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}},
+            scales:{x:{title:{display:true,text:'ms',font:{size:9}},ticks:{maxTicksLimit:8,font:{size:8}},grid:{color:'#f4f4f4'}},
+                y:{title:{display:true,text:'|h(t)|',font:{size:8}},min:0,ticks:{font:{size:8},maxTicksLimit:4},grid:{color:'#f4f4f4'},position:'left'},
+                y1:{title:{display:true,text:'dB',font:{size:8}},min:-65,max:5,ticks:{font:{size:8},maxTicksLimit:6},grid:{display:false},position:'right'}}}
+    });
+    selectParam('T_mid');
+});
+</script>
+</body>
+</html>

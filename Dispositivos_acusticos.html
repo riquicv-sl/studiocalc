@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudioCalc | Dispositivos Acústicos — Resonadores y Difusores</title>
+    <!-- polyfill.io eliminado (servicio comprometido 2024; MathJax 3 no lo necesita) -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --primary: #00aded;
+            --dark:    #2c3e50;
+            --bg:      #f8f9fa;
+            --dim-color: #d32f2f;
+            --blueprint-bg: #1e1e1e;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--bg);
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container { max-width: 1000px; margin: 0 auto; }
+
+        /* ── Tarjetas (igual que MNV) ─────────────────────────────────────── */
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid #e0e0e0;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        /* ── Tipografía ───────────────────────────────────────────────────── */
+        h1 {
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 10px;
+            margin-top: 0;
+            font-size: 1.5rem;
+        }
+        .subtitle  { color: #666; font-style: italic; margin-top: 4px; font-size: 0.9rem; }
+        .author-line { color: #999; font-size: 0.8rem; margin-top: 4px; }
+
+        h2 {
+            color: var(--dark);
+            font-size: 1.1rem;
+            margin-top: 0;
+            border-left: 4px solid var(--primary);
+            padding-left: 10px;
+        }
+        h3 {
+            color: var(--dark);
+            font-size: 1rem;
+            margin-top: 18px;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+        h4 { color: #444; font-size: 0.95rem; margin: 14px 0 6px; }
+
+        /* ── Bloques de contenido ────────────────────────────────────────── */
+        .theory-block {
+            background-color: #f1f8ff;
+            border-left: 4px solid var(--primary);
+            border-radius: 0 4px 4px 0;
+            padding: 16px 18px;
+            margin: 16px 0;
+            font-size: 0.92rem;
+        }
+
+        .design-steps { counter-reset: step; list-style: none; padding: 0; }
+        .design-steps li {
+            position: relative;
+            padding-left: 40px;
+            margin-bottom: 12px;
+            font-size: 0.92rem;
+        }
+        .design-steps li::before {
+            counter-increment: step;
+            content: counter(step);
+            position: absolute;
+            left: 0; top: 0;
+            background: var(--primary);
+            color: white;
+            width: 26px; height: 26px;
+            text-align: center;
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 0.85rem;
+            line-height: 26px;
+        }
+
+        .formula-box {
+            background: #fff;
+            border: 1px solid #d0e3f0;
+            border-radius: 4px;
+            padding: 16px;
+            text-align: center;
+            margin: 14px 0;
+            background: #f7fbff;
+        }
+
+        .math-step {
+            background: #fffbe6;
+            border: 1px solid #ffe58f;
+            border-radius: 4px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+            font-size: 0.92rem;
+        }
+
+        /* ── Blueprints (planos técnicos — fondo oscuro mantenido) ────────── */
+        .blueprint-wrapper {
+            background-color: var(--blueprint-bg);
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 18px;
+            margin-top: 20px;
+            color: #ddd;
+            overflow: hidden;
+        }
+        .blueprint-title {
+            color: var(--primary);
+            font-family: monospace;
+            font-weight: bold;
+            border-bottom: 1px solid #444;
+            margin-bottom: 14px;
+            display: block;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+
+        /* ── SVG / diagramas ─────────────────────────────────────────────── */
+        svg { width: 100%; height: auto; display: block; font-family: monospace; }
+        .dim-line  { stroke: var(--dim-color); stroke-width: 1; vector-effect: non-scaling-stroke; }
+        .dim-text  { fill:   var(--dim-color); font-weight: bold; font-size: 12px; }
+        .wood-fill { fill: url(#woodPat); stroke: #000; stroke-width: 1; }
+        .wool-fill { fill: url(#woolPat); stroke: none; }
+        .hole-fill { fill: url(#woolPat); stroke: none; }
+        .fin-fill  { fill: #5c4033; }
+        .block-fill{ fill: url(#woodPat); stroke: #3e2723; stroke-width: 0.5; }
+
+        /* ── Tablas ──────────────────────────────────────────────────────── */
+        table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 0.9rem; }
+        th { background-color: var(--primary); color: white; padding: 8px 10px; text-align: left; }
+        td { border-bottom: 1px solid #eee; padding: 7px 10px; }
+        tr:nth-child(even) { background-color: #fafafa; }
+
+        /* ── Variables matemáticas ───────────────────────────────────────── */
+        .var { font-weight: bold; font-family: 'Times New Roman', serif; font-style: italic; color: var(--dark); }
+
+        /* ── Pie de página ───────────────────────────────────────────────── */
+        footer {
+            text-align: center;
+            font-size: 0.7rem;
+            color: #999;
+            margin-top: 30px;
+        }
+        .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+        /* ── Responsive ──────────────────────────────────────────────────── */
+        @media (max-width: 700px) {
+            body { padding: 10px; }
+            .card { padding: 14px; }
+            h1 { font-size: 1.25rem; }
+            h2 { font-size: 1rem; }
+            .blueprint-wrapper { overflow-x: auto; }
+            table { display: block; overflow-x: auto; white-space: nowrap; font-size: 0.85rem; }
+            .theory-block, .formula-box, .math-step { padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<svg style="width:0; height:0; position:absolute;">
+    <defs>
+        <pattern id="woodPat" width="20" height="60" patternUnits="userSpaceOnUse">
+            <rect width="20" height="60" fill="#a07040"/>
+            <path d="M0,0 q10,30 20,0 M0,30 q10,30 20,0" stroke="#6b4226" fill="none"/>
+        </pattern>
+        <pattern id="woolPat" width="5" height="5" patternUnits="userSpaceOnUse">
+            <rect width="5" height="5" fill="#333"/>
+            <circle cx="2" cy="2" r="1" fill="#555"/>
+        </pattern>
+        <pattern id="gridPat" width="20" height="20" patternUnits="userSpaceOnUse">
+            <circle cx="10" cy="10" r="1.5" fill="#333"/>
+        </pattern>
+    </defs>
+</svg>
+
+<div class="container">
+
+    <div class="card">
+        <h1>StudioCalc | Dispositivos Acústicos</h1>
+        <p class="subtitle">Resonadores de Helmholtz y Difusores QRD — Fundamentos, Cálculos y Planimetría</p>
+        <p class="author-line">Prof. Ricardo Cabrera V.</p>
+    </div>
+
+    <div class="card">
+        <h2>1. Resonador Múltiple de Helmholtz</h2>
+        
+        <div class="theory-block">
+            <h3><span class="theory-icon">🔬</span>¿Qué es y cómo funciona?</h3>
+            <p>Es un dispositivo diseñado para la <strong>absorción selectiva de bajas frecuencias</strong> (graves). Imagina que una sala tiene un "zumbido" molesto en una nota específica (ej. 100 Hz); este dispositivo actúa como un francotirador para eliminar solo esa nota sin apagar el brillo del resto de la sala.</p>
+            
+            <p><strong>El Principio de la "Botella":</strong></p>
+            <p>Funciona bajo el principio físico de <strong>Masa-Resorte</strong>, igual que cuando soplas por el cuello de una botella vacía y esta resuena:</p>
+            <ul>
+                <li><strong>Masa:</strong> Es el aire atrapado en los agujeros del panel (el "cuello").</li>
+                <li><strong>Resorte:</strong> Es el aire atrapado en la caja sellada detrás del panel (el "cuerpo").</li>
+            </ul>
+            <p>Al vibrar en sintonía con una frecuencia específica (<span class="var">f₀</span>), el sistema disipa la energía sonora mediante fricción en los orificios.</p>
+        </div>
+
+        <h3>Paso a Paso para el Diseño</h3>
+        <ol class="design-steps">
+            <li><strong>Identificar la Frecuencia Problema (<span class="var">f₀</span>):</strong> Mediante medición acústica, determina qué frecuencia grave está resonando en la sala.</li>
+            <li><strong>Definir Materiales (<span class="var">l, d, D</span>):</strong> Mide el espesor de la madera que usarás para la tapa, el diámetro de tu broca y la profundidad disponible para el bastidor.</li>
+            <li><strong>Calcular el Porcentaje de Perforación (<span class="var">P</span>):</strong> Usando la fórmula, determina qué porcentaje de la superficie frontal debe ser "hueco" para sintonizar con esa frecuencia. Es importante que <span class="var">P</span> <strong>NO</strong> supere el 20%. </li>
+            <li><strong>Calcular la Separación (<span class="var">S</span>):</strong> Traduce ese porcentaje a una distancia constructiva (centímetros entre agujero y agujero).</li>
+        </ol>
+
+        <h3>Fórmulas y Variables</h3>
+        <p><strong>1. Fórmula General de Helmholtz (Despejada para P):</strong></p>
+        <div class="formula-box">
+            $$P = \left( \frac{2\pi \cdot f_0}{c} \right)^2 \cdot D \cdot (l + 0.8d)$$
+        </div>
+        
+        <p><strong>2. Fórmula de Distribución Geométrica (Para hallar S):</strong></p>
+        <div class="formula-box">
+            $$S = d \cdot \sqrt{\frac{\pi}{4 \cdot P}}$$
+        </div>
+
+        <p><strong>Definición de Variables:</strong></p>
+        <ul>
+            <li><span class="var">P</span> : Porcentaje de perforación (en decimal, ej. 0.01 es 1%).</li>
+            <li><span class="var">f₀</span> : Frecuencia de resonancia objetivo (Hz).</li>
+            <li><span class="var">c</span> : Velocidad del sonido (Constante: 344 m/s).</li>
+            <li><span class="var">D</span> : Profundidad de la cavidad de aire (metros).</li>
+            <li><span class="var">l</span> : Espesor del panel frontal (metros).</li>
+            <li><span class="var">d</span> : Diámetro de la perforación (metros).</li>
+            <li><span class="var">S</span> : Separación entre centros de agujeros (metros).</li>
+        </ul>
+
+        <h3>Ejemplo de Aplicación: Resonador 100 Hz</h3>
+        <p><strong>Enunciado:</strong> Diseñar un resonador para eliminar una frecuencia de 100 Hz. Se dispone de una placa de MDF de 18mm de espesor y un bastidor de madera de 10cm de profundidad. La broca a utilizar es de 6mm. El panel mide 610x610mm.</p>
+
+        <table style="width: 70%;">
+            <tr><th>Datos de Entrada</th><th>Valor</th><th>Unidad SI (metros)</th></tr>
+            <tr><td>Frecuencia (<span class="var">f₀</span>)</td><td>100 Hz</td><td>100 Hz</td></tr>
+            <tr><td>Profundidad (<span class="var">D</span>)</td><td>100 mm</td><td>0.1 m</td></tr>
+            <tr><td>Espesor (<span class="var">l</span>)</td><td>18 mm</td><td>0.018 m</td></tr>
+            <tr><td>Broca (<span class="var">d</span>)</td><td>6 mm</td><td>0.006 m</td></tr>
+        </table>
+
+        <h4>Resolución Matemática:</h4>
+        
+        <div class="math-step">
+            <p><strong>Paso 1: Calcular el Porcentaje de Perforación (<span class="var">P</span>)</strong></p>
+            <p><em>Fórmula:</em> $$P = \left( \frac{2\pi f_0}{c} \right)^2 \cdot D \cdot (l + 0.8d)$$</p>
+            <p><em>Reemplazo de Datos:</em> $$P = \left( \frac{2 \cdot 3.1416 \cdot 100}{344} \right)^2 \cdot 0.1 \cdot (0.018 + 0.8(0.006))$$</p>
+            <p><em>Cálculo:</em></p>
+            <p>Primero se resuelve el término de frecuencia <span class="var">\(\left(\frac{2\pi f_0}{c}\right)\)</span>, sustituyendo <span class="var">\(f_0 = 100\,\text{Hz}\)</span> y <span class="var">\(c = 344\,\text{m/s}\)</span>:</p>
+            $$\left( \frac{2 \cdot 3.1416 \cdot 100}{344} \right) \approx 1.827$$
+            <p>Luego se calcula la corrección efectiva del cuello, sumando el espesor del panel más <span class="var">\(0.8d\)</span>. Como la broca es de 6 mm, entonces <span class="var">\(0.8d = 0.0048\,\text{m}\)</span>:</p>
+            $$0.018 + 0.8(0.006) = 0.018 + 0.0048 = 0.0228$$
+            <p>Con esos dos resultados ya se puede reemplazar cada bloque dentro de la fórmula general:</p>
+            $$
+            \begin{aligned}
+            1.\;&(1.827)^2 \approx 3.338 \\
+            2.\;&(0.018 + 0.0048) = 0.0228 \\
+            3.\;&3.338 \cdot 0.1 \cdot 0.0228 \approx 0.0076
+            \end{aligned}
+            $$
+            <p><em>Resultado:</em> <strong>$$P \approx 0.0076 \quad (0.76\%)$$</strong></p>
+        </div>
+
+        <div class="math-step">
+            <p><strong>Paso 2: Calcular la Separación entre centros (<span class="var">S</span>)</strong></p>
+            <p><em>Fórmula:</em> $$S = d \cdot \sqrt{\frac{\pi}{4 \cdot P}}$$</p>
+            <p><em>Reemplazo de Datos:</em> $$S = 0.006 \cdot \sqrt{\frac{3.1416}{4 \cdot 0.0076}}$$</p>
+            <p><em>Cálculo:</em> $$S = 0.006 \cdot \sqrt{103.34} = 0.006 \cdot 10.16$$</p>
+            <p><em>Resultado:</em> <strong>$$S = 0.061 \text{ m} \rightarrow 61 \text{ mm}$$</strong></p>
+        </div>
+
+        <div class="blueprint-wrapper">
+            <span class="blueprint-title">PLANO 1.1: VISTA FRONTAL (DIMENSIONES GENERALES)</span>
+            <svg id="svgHelmholtzFront" viewBox="-50 -50 700 700" preserveAspectRatio="xMidYMid meet">
+                <g id="drawHelmholtzFront"></g>
+            </svg>
+            <br>
+            <span class="blueprint-title">PLANO 1.2: CORTE DE SECCIÓN A-A (DETALLE)</span>
+            <svg id="svgHelmholtzSection" viewBox="-20 -20 350 450" preserveAspectRatio="xMidYMid meet">
+                <g id="drawHelmholtzSection"></g>
+            </svg>
+            <p style="text-align:center; font-size:0.8rem; color:#888; margin-top:10px;">
+                * Nota constructiva: Rellenar la cavidad al 50% con lana mineral.
+            </p>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>2. Difusor QRD Unidimensional</h2>
+        
+        <div class="theory-block">
+            <h3><span class="theory-icon">🔊</span>¿Qué es y cómo funciona?</h3>
+            <p>Es una superficie arquitectónica diseñada para <strong>dispersar el sonido</strong>. Si una pared plana actúa como un espejo (reflejando la luz directo a tus ojos), un difusor actúa como un vidrio esmerilado o rugoso, esparciendo la luz suavemente en todas direcciones.</p>
+            
+            <p><strong>El Principio de Fase:</strong></p>
+            <p>El dispositivo utiliza una serie de pozos (canales) con diferentes profundidades calculadas matemáticamente. Cuando el sonido entra en los pozos, viaja hasta el fondo y rebota. Como cada pozo tiene una profundidad distinta, las ondas salen en momentos diferentes (cambio de fase). Esto rompe la coherencia de la onda sonora, eliminando ecos metálicos y haciendo que la sala suene más amplia y envolvente.</p>
+        </div>
+
+        <h3>Paso a Paso para el Diseño</h3>
+        <ol class="design-steps">
+            <li><strong>Seleccionar Frecuencia de Diseño (<span class="var">f_diseño</span>):</strong> Es la frecuencia más baja que el difusor afectará.</li>
+            <li><strong>Elegir Número Primo (<span class="var">N</span>):</strong> Define la complejidad. N7 es estándar, N13 es alta calidad.</li>
+            <li><strong>Calcular la Secuencia Matemática:</strong> Usar la fórmula de residuo cuadrático para obtener los valores base.</li>
+            <li><strong>Convertir a Medidas Reales:</strong> Multiplicar la secuencia por un factor físico basado en la velocidad del sonido.</li>
+        </ol>
+
+        <h3>Fórmulas y Variables</h3>
+        <p><strong>1. Secuencia de Residuos (<span class="var">sₙ</span>):</strong></p>
+        <div class="formula-box">$$s_n = n^2 \pmod N$$</div>
+        
+        <p><strong>2. Profundidad Física (<span class="var">dₙ</span>):</strong></p>
+        <div class="formula-box">
+            $$d_n = s_n \cdot \left( \frac{c}{2 \cdot N \cdot f_{diseño}} \right)$$
+        </div>
+        <p><strong>Variables:</strong> <span class="var">n</span>: Número de pozo (0, 1, 2...), <span class="var">N</span>: Número primo, <span class="var">c</span>: 344 m/s.</p>
+        <h3>Base matemática del QRD (explicación didáctica)</h3>
+        <p>
+            Un difusor QRD se basa en una <strong>secuencia de residuos cuadráticos</strong>. Para un número primo <span class="var">p</span>,
+            la secuencia se calcula con:
+        </p>
+        <div class="formula-box">$$s_n = n^2 \pmod p$$</div>
+        <p>
+            <strong>Importante:</strong> el índice <span class="var">n</span> recorre desde <strong>0 hasta <span class="var">p</span> − 1</strong>.
+            Por eso, si <span class="var">p</span> = 7, entonces <span class="var">n</span> toma los valores <strong>0, 1, 2, 3, 4, 5, 6</strong>
+            (exactamente 7 ranuras). Los valores <span class="var">s_n</span> son <strong>adimensionales</strong>; se convierten a profundidad física
+            multiplicando por un <em>factor de escala</em>.
+        </p>
+
+        <div class="blueprint-wrapper">
+            <span class="blueprint-title">FIGURA 2.0: SECUENCIA (0 → p−1) Y ESCALADO A PROFUNDIDAD REAL</span>
+            <svg viewBox="0 0 1100 360" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Diagrama didáctico de la base matemática de un difusor QRD: cálculo de s_n, tabla n y s_n, y conversión a profundidad real mediante un factor.">
+                <!-- Panel 1: Fórmula -->
+                <rect x="20" y="20" width="320" height="320" rx="6" ry="6" fill="#232323" stroke="#444"/>
+                <text x="40" y="60" fill="#ffae00" font-family="monospace" font-weight="bold" font-size="18">1) Cálculo de la secuencia</text>
+                <text x="40" y="110" fill="#ddd" font-family="monospace" font-size="16">s<tspan baseline-shift="sub">n</tspan> = n<tspan baseline-shift="super">2</tspan> mod p</text>
+                <text x="40" y="150" fill="#bbb" font-family="monospace" font-size="13">p: número primo</text>
+                <text x="40" y="175" fill="#bbb" font-family="monospace" font-size="13">n: índice (0 → p−1)</text>
+                <text x="40" y="200" fill="#bbb" font-family="monospace" font-size="13">s<tspan baseline-shift="sub">n</tspan>: residuo cuadrático (adimensional)</text>
+
+                <!-- Panel 2: Tabla N7 -->
+                <rect x="370" y="20" width="340" height="320" rx="6" ry="6" fill="#232323" stroke="#444"/>
+                <text x="390" y="60" fill="#ffae00" font-family="monospace" font-weight="bold" font-size="18">2) Ejemplo p = 7 (N7)</text>
+
+                <!-- Encabezados -->
+                <rect x="395" y="85" width="120" height="30" fill="#2c3e50"/>
+                <rect x="520" y="85" width="165" height="30" fill="#2c3e50"/>
+                <text x="455" y="105" fill="#fff" font-family="monospace" font-size="14" text-anchor="middle">n</text>
+                <text x="602" y="105" fill="#fff" font-family="monospace" font-size="14" text-anchor="middle">s<tspan baseline-shift="sub">n</tspan> = n² mod 7</text>
+
+                <!-- Filas -->
+                <g font-family="monospace" font-size="14" fill="#ddd">
+                    <!-- n column -->
+                    <text x="455" y="140" text-anchor="middle">0</text><text x="602" y="140" text-anchor="middle">0</text>
+                    <text x="455" y="170" text-anchor="middle">1</text><text x="602" y="170" text-anchor="middle">1</text>
+                    <text x="455" y="200" text-anchor="middle">2</text><text x="602" y="200" text-anchor="middle">4</text>
+                    <text x="455" y="230" text-anchor="middle">3</text><text x="602" y="230" text-anchor="middle">2</text>
+                    <text x="455" y="260" text-anchor="middle">4</text><text x="602" y="260" text-anchor="middle">2</text>
+                    <text x="455" y="290" text-anchor="middle">5</text><text x="602" y="290" text-anchor="middle">4</text>
+                    <text x="455" y="320" text-anchor="middle">6</text><text x="602" y="320" text-anchor="middle">1</text>
+                </g>
+                <!-- Líneas tabla -->
+                <g stroke="#3a3a3a" stroke-width="1">
+                    <line x1="395" y1="115" x2="685" y2="115"/>
+                    <line x1="395" y1="145" x2="685" y2="145"/>
+                    <line x1="395" y1="175" x2="685" y2="175"/>
+                    <line x1="395" y1="205" x2="685" y2="205"/>
+                    <line x1="395" y1="235" x2="685" y2="235"/>
+                    <line x1="395" y1="265" x2="685" y2="265"/>
+                    <line x1="395" y1="295" x2="685" y2="295"/>
+                    <line x1="395" y1="325" x2="685" y2="325"/>
+                    <line x1="515" y1="85" x2="515" y2="325"/>
+                    <rect x="395" y="85" width="290" height="240" fill="none"/>
+                </g>
+
+                <!-- Panel 3: Pozos + escala -->
+                <rect x="740" y="20" width="340" height="320" rx="6" ry="6" fill="#232323" stroke="#444"/>
+                <text x="760" y="60" fill="#ffae00" font-family="monospace" font-weight="bold" font-size="18">3) Aplicación en el difusor</text>
+                <text x="760" y="90" fill="#bbb" font-family="monospace" font-size="13">Profundidad real = s<tspan baseline-shift="sub">n</tspan> × factor</text>
+
+                <!-- mini-difusor -->
+                <g transform="translate(770,120)">
+                    <!-- base -->
+                    <rect x="0" y="170" width="290" height="10" fill="#555"/>
+                    <!-- fins and blocks (escala relativa, no mm) -->
+                    <!-- parámetros visuales -->
+                    <!-- sequence: 0,1,4,2,2,4,1 -->
+                    <!-- draw wells as blocks from depth to max -->
+                    <g>
+                        <!-- fin -->
+                        <rect x="0" y="0" width="6" height="180" class="fin-fill"/>
+                        <!-- well 0: s0=0 => bloque lleno (sin pozo) -->
+                        <rect x="6" y="0" width="34" height="180" class="block-fill"/>
+                        <rect x="40" y="0" width="6" height="180" class="fin-fill"/>
+
+                        <!-- well 1: s1=1 -->
+                        <rect x="46" y="45" width="34" height="135" class="block-fill"/>
+                        <rect x="80" y="0" width="6" height="180" class="fin-fill"/>
+
+                        <!-- well 2: s2=4 (máximo) -->
+                        <rect x="86" y="150" width="34" height="30" class="block-fill"/>
+                        <rect x="120" y="0" width="6" height="180" class="fin-fill"/>
+
+                        <!-- well 3: s3=2 -->
+                        <rect x="126" y="95" width="34" height="85" class="block-fill"/>
+                        <rect x="160" y="0" width="6" height="180" class="fin-fill"/>
+
+                        <!-- well 4: s4=2 -->
+                        <rect x="166" y="95" width="34" height="85" class="block-fill"/>
+                        <rect x="200" y="0" width="6" height="180" class="fin-fill"/>
+
+                        <!-- well 5: s5=4 -->
+                        <rect x="206" y="150" width="34" height="30" class="block-fill"/>
+                        <rect x="240" y="0" width="6" height="180" class="fin-fill"/>
+
+                        <!-- well 6: s6=1 -->
+                        <rect x="246" y="45" width="34" height="135" class="block-fill"/>
+                        <rect x="280" y="0" width="6" height="180" class="fin-fill"/>
+                    </g>
+
+                    <!-- labels -->
+                    <g font-family="monospace" font-size="12" fill="#ff3333" font-weight="bold">
+                        <text x="23" y="-6" text-anchor="middle">s0</text>
+                        <text x="63" y="35" text-anchor="middle">s1</text>
+                        <text x="103" y="140" text-anchor="middle">s2</text>
+                        <text x="143" y="85" text-anchor="middle">s3</text>
+                        <text x="183" y="85" text-anchor="middle">s4</text>
+                        <text x="223" y="140" text-anchor="middle">s5</text>
+                        <text x="263" y="35" text-anchor="middle">s6</text>
+                    </g>
+
+                    <text x="145" y="205" fill="#bbb" font-family="monospace" font-size="12" text-anchor="middle">
+                        ranuras iguales, profundidades distintas
+                    </text>
+                </g>
+
+                <!-- flecha de flujo (panel 2 -> 3) -->
+                
+                <text x="722" y="165" fill="#ff3333" font-family="monospace" font-size="12" text-anchor="middle">→</text>
+            </svg>
+            <p style="text-align:center; font-size:0.8rem; color:#888; margin-top:10px;">
+                * Figura didáctica: la tabla calcula <span class="var">s_n</span> para <span class="var">n</span> = 0 → <span class="var">p</span>−1; luego <span class="var">s_n</span> se escala a profundidad física.
+            </p>
+        </div>
+
+    <div class="card">
+        <h3>Ejemplo de Aplicación: Difusor N7 (600 Hz)</h3>
+        <p><strong>Enunciado:</strong> Diseñar un difusor QRD basado en el número primo 7 para una frecuencia de diseño de 600 Hz. El ancho total a cubrir es 1.5 metros y se usarán aletas de 5mm de espesor.</p>
+
+        <table style="width: 70%;">
+            <tr><th>Datos de Entrada</th><th>Valor</th></tr>
+            <tr><td>Frecuencia Diseño</td><td>600 Hz</td></tr>
+            <tr><td>Número Primo (<span class="var">N</span>)</td><td>7</td></tr>
+            <tr><td>Ancho Total</td><td>1500 mm</td></tr>
+        </table>
+
+        <h4>Resolución Matemática:</h4>
+
+        <div class="math-step">
+            <p><strong>Paso 1: Calcular el Factor de Profundidad (Unidad Base)</strong></p>
+            <p><em>Fórmula:</em> $$\text{Factor} = \frac{c}{2 \cdot N \cdot f_{diseño}}$$</p>
+            <p><em>Reemplazo:</em> $$\text{Factor} = \frac{344}{2 \cdot 7 \cdot 600} = \frac{344}{8400}$$</p>
+            <p><em>Resultado:</em> <strong>$$\text{Factor} \approx 0.041 \text{ m} = 4.1 \text{ cm}$$</strong></p>
+        </div>
+
+        <div class="math-step">
+            <p><strong>Paso 2: Calcular Profundidad de cada Pozo (<span class="var">dₙ</span>)</strong></p>
+            <p>Utilizamos la secuencia N7 (<strong>0, 1, 4, 2, 2, 4, 1</strong>) y aplicamos la fórmula \( d_n = s_n \cdot \text{Factor} \):</p>
+
+            <p style="margin-top:15px; margin-bottom:5px;"><strong>A. Pozos con secuencia 0 (Pozo 0):</strong></p>
+            \[d_0 = 0 \cdot 4.1 \text{ cm} = \mathbf{0 \text{ cm}} \quad \text{(Fondo a ras)}\]
+
+            <p style="margin-top:15px; margin-bottom:5px;"><strong>B. Pozos con secuencia 1 (Pozos 1 y 6):</strong></p>
+            \[d_{1,6} = 1 \cdot 4.1 \text{ cm} = \mathbf{4.1 \text{ cm}}\]
+
+            <p style="margin-top:15px; margin-bottom:5px;"><strong>C. Pozos con secuencia 2 (Pozos 3 y 4):</strong></p>
+            \[d_{3,4} = 2 \cdot 4.1 \text{ cm} = \mathbf{8.2 \text{ cm}}\]
+
+            <p style="margin-top:15px; margin-bottom:5px;"><strong>D. Pozos con secuencia 4 (Pozos 2 y 5):</strong></p>
+            \[d_{2,5} = 4 \cdot 4.1 \text{ cm} = \mathbf{16.4 \text{ cm}} \quad \text{(Profundidad Máxima)}\]
+        </div>
+
+        <div class="blueprint-wrapper">
+            <span class="blueprint-title">PLANO 2.1: PERFIL CONSTRUCTIVO (VISTA PLANTA)</span>
+            <svg id="svgQRDProf" viewBox="-50 -50 1600 350" preserveAspectRatio="xMidYMid meet">
+                <g id="gQRDProf"></g>
+            </svg>
+            
+            <br><br>
+            
+            <span class="blueprint-title">PLANO 2.2: ISOMÉTRICO (ESTRUCTURA 3D)</span>
+            <svg id="svgQRD3D" viewBox="0 0 600 450" preserveAspectRatio="xMidYMid meet">
+                <g id="gQRD3D"></g>
+            </svg>
+            <p style="text-align:center; font-size:0.8rem; color:#888; margin-top:10px;">
+                * Estructura 3D extendida con profundidad simulada de 1.2m.
+            </p>
+        </div>
+    </div>
+
+    <footer>Prof. Ricardo Cabrera V. | Generado sin librerías externas</footer>
+
+</div>
+
+<script>
+    window.onload = function() {
+        try { renderHelmholtzFront(); } catch(e) { console.error("Error Front Helm", e); }
+        try { renderHelmholtzSection(); } catch(e) { console.error("Error Section Helm", e); }
+        try { renderQRDProfile(); } catch(e) { console.error("Error QRD Prof", e); }
+        try { renderQRD3D(); } catch(e) { console.error("Error QRD 3D", e); }
+    };
+
+    // --- 1.1 HELMHOLTZ FRONTAL (NUEVO) ---
+    function renderHelmholtzFront() {
+        const svg = document.getElementById('drawHelmholtzFront');
+        const W = 610; const H = 610; const S = 61; const dr = 6;
+        
+        // Panel Base
+        svg.innerHTML += `<rect x="0" y="0" width="${W}" height="${H}" class="wood-fill"/>`;
+        
+        // Grid de Agujeros (Usando patrón para rendimiento visual limpio)
+        const pat = document.getElementById('gridPat');
+        pat.setAttribute('width', S);
+        pat.setAttribute('height', S);
+        pat.children[0].setAttribute('cx', S/2);
+        pat.children[0].setAttribute('cy', S/2);
+        pat.children[0].setAttribute('r', dr/2);
+        
+        // Área perforada (Centrada aprox)
+        const rows = Math.floor((H-40)/S);
+        const cols = Math.floor((W-40)/S);
+        const pW = cols*S; const pH = rows*S;
+        const offX = (W-pW)/2; const offY = (H-pH)/2;
+        
+        svg.innerHTML += `<rect x="${offX}" y="${offY}" width="${pW}" height="${pH}" fill="url(#gridPat)"/>`;
+
+        // Cotas
+        drawDim(svg, 0, -30, W, -30, "610mm", true); // Ancho
+        drawDim(svg, -30, 0, -30, H, "610mm", true, true); // Alto
+    }
+
+    // --- 1.2 HELMHOLTZ SECCIÓN ---
+    function renderHelmholtzSection() {
+        const svg = document.getElementById('drawHelmholtzSection');
+        const H = 610; const vH = 350; 
+        const vDep = 100; const vThick = 18; const vDrill = 12;
+        const scaleY = vH/H; const vS = 61 * scaleY;
+
+        svg.innerHTML += `<rect x="0" y="0" width="10" height="${vH}" class="wood-fill"/>`; // Fondo
+        svg.innerHTML += `<rect x="10" y="0" width="${vDep}" height="20" class="wood-fill"/>`; // Marco Sup
+        svg.innerHTML += `<rect x="10" y="${vH-20}" width="${vDep}" height="20" class="wood-fill"/>`; // Marco Inf
+        svg.innerHTML += `<rect x="10" y="20" width="${vDep}" height="${vH-40}" class="wool-fill" opacity="0.8"/>`; // Lana
+        
+        const px = 10 + vDep;
+        svg.innerHTML += `<rect x="${px}" y="0" width="${vThick}" height="${vH}" class="wood-fill"/>`; // Tapa
+
+        const rows = Math.floor((H-40)/61);
+        const startY = (vH - (rows * vS)) / 2;
+        
+        // Loop perforación
+        for(let i=0; i<rows; i++) {
+            let hy = startY + (i * vS);
+            svg.innerHTML += `<rect x="${px}" y="${hy}" width="${vThick}" height="${vDrill}" class="hole-fill"/>`;
+            svg.innerHTML += `<line x1="${px}" y1="${hy}" x2="${px+vThick}" y2="${hy}" stroke="#000" stroke-width="0.5"/>`;
+            svg.innerHTML += `<line x1="${px}" y1="${hy+vDrill}" x2="${px+vThick}" y2="${hy+vDrill}" stroke="#000" stroke-width="0.5"/>`;
+            
+            if(i === Math.floor(rows/2)) {
+                let cy1 = hy + vDrill/2;
+                let cy2 = cy1 + vS;
+                let dimX = px + vThick + 25;
+                svg.innerHTML += `<line x1="${px}" y1="${cy1}" x2="${dimX+5}" y2="${cy1}" stroke="#ff3333" stroke-dasharray="3,3"/>`;
+                svg.innerHTML += `<line x1="${px}" y1="${cy2}" x2="${dimX+5}" y2="${cy2}" stroke="#ff3333" stroke-dasharray="3,3"/>`;
+                drawDim(svg, dimX, cy1, dimX, cy2, "61mm", true, true);
+            }
+        }
+        drawDim(svg, 10, vH+20, px, vH+20, "100mm", true);
+        drawDim(svg, px, vH+20, px+vThick, vH+20, "18mm", false);
+        drawDim(svg, px+vThick+55, 0, px+vThick+55, vH, "610mm", true, true);
+    }
+
+    // --- 2.1 QRD PERFIL ---
+    function renderQRDProfile() {
+        const svg = document.getElementById('gQRDProf');
+        const depths = [0, 41, 164, 82, 82, 164, 41];
+        const N = 7; const periods = 3; 
+        const fin = 5; const maxD = 164; const W = 1500;
+        
+        const totalWells = N * periods;
+        const totalFinSpace = (totalWells + 1) * fin;
+        const wellW = (W - totalFinSpace) / totalWells;
+
+        svg.innerHTML += `<rect x="0" y="${maxD}" width="${W}" height="10" fill="#555"/>`; 
+        svg.innerHTML += `<line x1="0" y1="0" x2="${W}" y2="0" stroke="#666" stroke-dasharray="5,5"/>`;
+        
+        let cx = 0;
+        for(let p=0; p<periods; p++) {
+            for(let i=0; i<N; i++) {
+                svg.innerHTML += `<rect x="${cx}" y="0" width="${fin}" height="${maxD+10}" class="fin-fill"/>`;
+                cx += fin;
+                let d = depths[i];
+                if(d < maxD) {
+                    svg.innerHTML += `<rect x="${cx}" y="${d}" width="${wellW}" height="${maxD-d}" class="block-fill"/>`;
+                }
+                if(p===0) {
+                    let mx = cx + wellW/2;
+                    let fSize = Math.min(14, wellW/2); 
+                    svg.innerHTML += `<text x="${mx}" y="${d-5}" text-anchor="middle" fill="#ff3333" font-size="${fSize}" font-weight="bold">${d}</text>`;
+                }
+                cx += wellW;
+            }
+        }
+        svg.innerHTML += `<rect x="${cx}" y="0" width="${fin}" height="${maxD+10}" class="fin-fill"/>`;
+
+        drawDim(svg, 0, -30, W, -30, "1500mm", true);
+        drawDim(svg, -20, 0, -20, maxD, "164mm", true, true);
+    }
+
+    // --- 2.2 QRD 3D ---
+    function renderQRD3D() {
+        const svg = document.getElementById('gQRD3D');
+        const depths = [0, 41, 164, 82, 82, 164, 41];
+        const N = 7; 
+        
+        const isoW = 35; const isoFin = 4;
+        const dX = 80; const dY = -60; 
+        const startX = 150; const startY = 200;
+        
+        const totW = (N*(isoW+isoFin)) + isoFin;
+        drawExtrusion(svg, startX-5, startY+100, totW+10, 10, dX, dY, "#3e2723", "#2a1b18", "#1a1000");
+
+        let cx = startX;
+        for(let i=0; i<N; i++) {
+            drawExtrusion(svg, cx, startY, isoFin, 100, dX, dY, "#8d6e63", "#6d4c41", "#4e342e");
+            cx += isoFin;
+            let d = depths[i];
+            let hScale = 100/164; 
+            let hBlock = 100 - (d * hScale);
+            let yBlock = (startY + 100) - hBlock;
+            
+            if(hBlock > 1) {
+                drawExtrusion(svg, cx, yBlock, isoW, hBlock, dX, dY, "#d7ccc8", "#a1887f", "#8d6e63");
+            }
+            svg.innerHTML += `<text x="${cx + isoW/2}" y="${startY + 130}" text-anchor="middle" font-size="12" fill="#888" font-weight="bold">P${i}</text>`;
+            cx += isoW;
+        }
+        drawExtrusion(svg, cx, startY, isoFin, 100, dX, dY, "#8d6e63", "#6d4c41", "#4e342e");
+        
+        // Cota de longitud (proyección isométrica) – ajuste estético
+        // Ubicada a la derecha para no invadir el cuerpo del difusor
+        let lx = startX + totW + 45; 
+        let ly = startY + 115;
+        let x1 = lx, y1 = ly;
+        let x2 = lx + dX, y2 = ly + dY;
+        // Cota de largo (referencia): sin flechas, con ticks y texto fuera de la línea
+        let lx1 = cx + 20; let ly1 = startY + 100;
+        let lx2 = lx1 + dX; let ly2 = ly1 + dY;
+        drawDimAngled(svg, lx1, ly1, lx2, ly2, "1.2m");
+    }
+
+    // --- UTILIDADES ---
+    function drawDim(svgInfo, x1, y1, x2, y2, txt, arrow, vert) {
+        // Cota estilo plano: línea de cota + líneas de referencia (sin flechas)
+        const tick = 10; // largo total de la "patita" (witness)
+        const fontSize = 12;
+
+        // Línea principal
+        let out = `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="dim-line"/>`;
+
+        if(vert) {
+            // Witness lines (horizontales) en extremos
+            out += `<line x1="${x1 - tick/2}" y1="${y1}" x2="${x1 + tick/2}" y2="${y1}" class="dim-line"/>`;
+            out += `<line x1="${x2 - tick/2}" y1="${y2}" x2="${x2 + tick/2}" y2="${y2}" class="dim-line"/>`;
+
+            const midY = (y1 + y2) / 2;
+            const tx = x1 - 18; // separación para que no se monte con la línea
+            out += `<text x="${tx}" y="${midY}" class="dim-text" transform="rotate(-90, ${tx}, ${midY})" text-anchor="middle" font-size="${fontSize}">${txt}</text>`;
+        } else {
+            // Witness lines (verticales) en extremos
+            out += `<line x1="${x1}" y1="${y1 - tick/2}" x2="${x1}" y2="${y1 + tick/2}" class="dim-line"/>`;
+            out += `<line x1="${x2}" y1="${y2 - tick/2}" x2="${x2}" y2="${y2 + tick/2}" class="dim-line"/>`;
+
+            const midX = (x1 + x2) / 2;
+            const ty = y1 - 10; // separa el texto de la línea (evita solape)
+            out += `<text x="${midX}" y="${ty}" class="dim-text" text-anchor="middle" font-size="${fontSize}">${txt}</text>`;
+        }
+
+        svgInfo.innerHTML += out;
+    }
+
+    function drawDimAngled(svgInfo, x1, y1, x2, y2, txt) {
+        // Cota en cualquier ángulo (sin flechas): línea + ticks + texto con offset normal
+        const tick = 10;
+        const fontSize = 12;
+
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const len = Math.hypot(dx, dy) || 1;
+
+        // Vector normal unitario (perpendicular) para desplazar texto y ticks
+        const nx = -dy / len;
+        const ny = dx / len;
+
+        // Línea principal
+        let out = `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="dim-line"/>`;
+
+        // Ticks perpendiculares en extremos
+        out += `<line x1="${x1 - nx*(tick/2)}" y1="${y1 - ny*(tick/2)}" x2="${x1 + nx*(tick/2)}" y2="${y1 + ny*(tick/2)}" class="dim-line"/>`;
+        out += `<line x1="${x2 - nx*(tick/2)}" y1="${y2 - ny*(tick/2)}" x2="${x2 + nx*(tick/2)}" y2="${y2 + ny*(tick/2)}" class="dim-line"/>`;
+
+        // Texto en el punto medio, con offset normal para que NO se cruce con la línea
+        const mx = (x1 + x2) / 2;
+        const my = (y1 + y2) / 2;
+        const off = 12;
+        out += `<text x="${mx + nx*off}" y="${my + ny*off}" class="dim-text" text-anchor="middle" font-size="${fontSize}">${txt}</text>`;
+
+        svgInfo.innerHTML += out;
+    }
+
+
+    function drawExtrusion(svg, x, y, w, h, dx, dy, cTop, cFront, cSide) {
+        let pathTop = `M${x},${y} L${x+dx},${y+dy} L${x+w+dx},${y+dy} L${x+w},${y} Z`;
+        let pathSide = `M${x+w},${y} L${x+w+dx},${y+dy} L${x+w+dx},${y+h+dy} L${x+w},${y+h} Z`;
+        let pathFront = `M${x},${y} L${x+w},${y} L${x+w},${y+h} L${x},${y+h} Z`;
+        svg.innerHTML += `<path d="${pathSide}" fill="${cSide}" stroke="#000" stroke-width="0.5"/>`;
+        svg.innerHTML += `<path d="${pathTop}" fill="${cTop}" stroke="#000" stroke-width="0.5"/>`;
+        svg.innerHTML += `<path d="${pathFront}" fill="${cFront}" stroke="#000" stroke-width="0.5"/>`;
+    }
+</script>
+
+</body>
+</html>

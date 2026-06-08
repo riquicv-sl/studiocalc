@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudioCalc | Herramientas de Acústica y Síntesis</title>
+    <style>
+        :root { --primary:#00aded; --dark:#2c3e50; --bg:#f8f9fa; }
+        * { box-sizing:border-box; }
+        body { font-family:'Segoe UI',Arial,sans-serif; background:var(--bg); color:#333; margin:0; padding:0; }
+
+        /* ── Header ─────────────────────────────────────────────────── */
+        header {
+            background:white; border-bottom:3px solid var(--primary);
+            padding:24px 32px; box-shadow:0 2px 8px rgba(0,0,0,.06);
+        }
+        .header-inner { max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
+        .logo { font-size:1.6rem; font-weight:bold; color:var(--primary); letter-spacing:-0.5px; }
+        .logo span { color:#aaa; font-weight:300; }
+        .header-sub { font-size:.85rem; color:#888; max-width:480px; }
+        .author { font-size:.78rem; color:#aaa; }
+
+        /* ── Main ────────────────────────────────────────────────────── */
+        main { max-width:1100px; margin:0 auto; padding:32px 20px 60px; }
+
+        /* ── Categorías ──────────────────────────────────────────────── */
+        .category { margin-bottom:40px; }
+        .cat-title {
+            font-size:1rem; font-weight:bold; color:var(--dark);
+            border-left:4px solid var(--primary); padding-left:12px;
+            margin-bottom:16px;
+        }
+        .cat-title span { font-size:.78rem; font-weight:normal; color:#999; margin-left:8px; }
+
+        /* ── Tarjetas de herramienta ────────────────────────────────── */
+        .tools-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; }
+        .tool-card {
+            background:white; border:1px solid #e0e0e0; border-radius:10px;
+            padding:20px; text-decoration:none; color:inherit;
+            box-shadow:0 2px 6px rgba(0,0,0,.05); transition:all .18s;
+            display:flex; flex-direction:column; gap:8px;
+        }
+        .tool-card:hover {
+            border-color:var(--primary); box-shadow:0 4px 16px rgba(0,173,237,.15);
+            transform:translateY(-2px);
+        }
+        .tool-icon { font-size:1.8rem; }
+        .tool-name { font-weight:bold; font-size:1rem; color:var(--dark); }
+        .tool-desc { font-size:.82rem; color:#777; line-height:1.5; flex:1; }
+        .tool-badge {
+            display:inline-block; font-size:.68rem; font-weight:bold;
+            padding:2px 8px; border-radius:10px; margin-top:4px;
+            align-self:flex-start;
+        }
+        .badge-blue   { background:#e3f2fd; color:#1565c0; }
+        .badge-green  { background:#e8f5e9; color:#2e7d32; }
+        .badge-purple { background:#f3e5f5; color:#6a1b9a; }
+        .badge-orange { background:#fff9e6; color:#e65100; }
+        .tool-card:hover .tool-name { color:var(--primary); }
+
+        /* ── Nota de uso en Wix ─────────────────────────────────────── */
+        .wix-note {
+            background:#f1f8ff; border:1px solid #d0e3f0; border-radius:8px;
+            padding:16px 20px; margin-top:40px; font-size:.82rem; color:#444;
+        }
+        .wix-note strong { color:var(--primary); }
+        .wix-code {
+            background:#1e1e1e; color:#9cdcfe; border-radius:6px;
+            padding:10px 14px; font-family:monospace; font-size:.8rem;
+            margin-top:10px; overflow-x:auto; white-space:pre;
+        }
+
+        footer { text-align:center; font-size:.7rem; color:#bbb; padding:24px; }
+
+        @media(max-width:600px){
+            .header-inner { flex-direction:column; align-items:flex-start; }
+            .tools-grid { grid-template-columns:1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-inner">
+        <div>
+            <div class="logo">StudioCalc <span>| Herramientas Interactivas</span></div>
+            <div class="header-sub" style="margin-top:4px;">
+                Calculadoras y simuladores para Acústica de Locales, Dispositivos Acústicos y Síntesis de Sonido.
+                Desarrolladas para el curso de Diseño de Plugins — IAVQ.
+            </div>
+        </div>
+        <div class="author">Prof. Ricardo Cabrera V.</div>
+    </div>
+</header>
+
+<main>
+
+    <!-- ── Acústica de Locales ─────────────────────────────────────── -->
+    <div class="category">
+        <div class="cat-title">Acústica de Locales <span>3 herramientas</span></div>
+        <div class="tools-grid">
+
+            <a class="tool-card" href="MNV-6.html">
+                <span class="tool-icon">🏠</span>
+                <div class="tool-name">Modos Normales de Vibración</div>
+                <div class="tool-desc">
+                    Calcula los 50 primeros modos de una sala rectangular.
+                    Criterios de Bolt, Bonello y espectro modal completo con
+                    detección de modos degenerados.
+                </div>
+                <span class="tool-badge badge-blue">ISO 3382 · ANSI S12.2</span>
+            </a>
+
+            <a class="tool-card" href="Curvas_de_Ruido.html">
+                <span class="tool-icon">📊</span>
+                <div class="tool-name">Curvas de Ruido</div>
+                <div class="tool-desc">
+                    Evaluación del ruido de fondo según familias NC, NR, PNC,
+                    RC y NCB. Cálculo de dB(A) para DIN 4109 y veredicto
+                    por tipo de recinto.
+                </div>
+                <span class="tool-badge badge-blue">NC · NR · PNC · RC · DIN</span>
+            </a>
+
+            <a class="tool-card" href="Auralizacion.html">
+                <span class="tool-icon">🎧</span>
+                <div class="tool-name">Auralización Paramétrica</div>
+                <div class="tool-desc">
+                    Escucha cómo suena un audio en tres salas padrón (Control Room,
+                    Aula, Sala de Conciertos). Ajusta parámetros acústicos como
+                    T_mid, C80, STI y escucha el efecto en tiempo real.
+                </div>
+                <span class="tool-badge badge-purple">Web Audio API · ISO 3382</span>
+            </a>
+
+        </div>
+    </div>
+
+    <!-- ── Dispositivos Acústicos ──────────────────────────────────── -->
+    <div class="category">
+        <div class="cat-title">Dispositivos Acústicos <span>3 herramientas</span></div>
+        <div class="tools-grid">
+
+            <a class="tool-card" href="Dispositivos_acusticos.html">
+                <span class="tool-icon">📐</span>
+                <div class="tool-name">Guía de Diseño: Resonadores y Difusores</div>
+                <div class="tool-desc">
+                    Manual técnico con fórmulas, ejemplos resueltos y planimetría
+                    SVG para Resonador de Helmholtz y Difusor QRD. Incluye
+                    fórmulas con MathJax.
+                </div>
+                <span class="tool-badge badge-green">Helmholtz · QRD · SynthEdit</span>
+            </a>
+
+            <a class="tool-card" href="Resonador_Helmholtz.html">
+                <span class="tool-icon">🔇</span>
+                <div class="tool-name">Calculadora Resonador de Helmholtz</div>
+                <div class="tool-desc">
+                    Calculadora interactiva para diseño de panel perforado. Ingresa
+                    frecuencia, espesor, broca y profundidad — obtén porcentaje
+                    de perforación, separación y planos constructivos.
+                </div>
+                <span class="tool-badge badge-green">Panel perforado · SVG en tiempo real</span>
+            </a>
+
+            <a class="tool-card" href="Difusor_QRD.html">
+                <span class="tool-icon">〰️</span>
+                <div class="tool-name">Calculadora Difusor QRD</div>
+                <div class="tool-desc">
+                    Diseño de difusor de residuos cuadráticos (Schroeder).
+                    Elige N7, N11 o N13. Visualización de perfil constructivo
+                    y estructura 3D isométrica en tiempo real.
+                </div>
+                <span class="tool-badge badge-green">N7 · N11 · N13 · 3D</span>
+            </a>
+
+        </div>
+    </div>
+
+    <!-- ── Síntesis y Efectos ──────────────────────────────────────── -->
+    <div class="category">
+        <div class="cat-title">Síntesis y Efectos <span>1 herramienta</span></div>
+        <div class="tools-grid" style="max-width:680px;">
+
+            <a class="tool-card" href="LFO_Lab.html">
+                <span class="tool-icon">🎛️</span>
+                <div class="tool-name">LFO Lab — Laboratorio de Modulación</div>
+                <div class="tool-desc">
+                    Explora AM (Tremolo), FM (Vibrato), PM (Chorus) y Ring
+                    Modulation. Controla forma de onda del LFO, Rate, Depth
+                    y escucha el resultado. Osciloscopio + espectro en tiempo real.
+                    Diseñado para complementar SynthEdit.
+                </div>
+                <span class="tool-badge badge-orange">AM · FM · PM · Ring · Web Audio</span>
+            </a>
+
+        </div>
+    </div>
+
+    <!-- ── Nota de uso en Wix ─────────────────────────────────────── -->
+    <div class="wix-note">
+        <strong>📌 Cómo usar estas herramientas en Wix</strong><br>
+        Las herramientas de <strong>Auralización</strong> y <strong>LFO Lab</strong> usan Web Audio API
+        y requieren ser embebidas con permiso de autoplay. En Wix, usa un elemento
+        <em>HTML embed</em> con el siguiente código (reemplaza la URL con la de tu GitHub Pages):
+        <div class="wix-code">&lt;iframe
+  src="https://TU-USUARIO.github.io/TU-REPO/LFO_Lab.html"
+  width="100%" height="750px"
+  allow="autoplay; microphone"
+  style="border:none; border-radius:8px;"&gt;
+&lt;/iframe&gt;</div>
+        Las demás herramientas (solo gráficos, sin audio) pueden pegarse directamente
+        en el HTML embed de Wix sin necesidad de iframe externo.
+    </div>
+
+</main>
+
+<footer>
+    StudioCalc · Prof. Ricardo Cabrera V. · Generado sin librerías externas de audio
+</footer>
+
+</body>
+</html>

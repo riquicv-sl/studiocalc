@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudioCalc | LFO Lab — Efectos de Modulación</title>
+    <style>
+        :root {
+            --primary: #00aded;
+            --dark:    #2c3e50;
+            --bg:      #f8f9fa;
+            --osc-bg:  #0d1117;
+            --grid:    #1a2332;
+            --col-lfo: #00e676;
+            --col-sig: #6e7a8a;
+            --col-res: #7c4dff;
+            --col-spec:#ff7043;
+        }
+        * { box-sizing: border-box; }
+        body { font-family:'Segoe UI',Arial,sans-serif; background:var(--bg); color:#333; margin:0; padding:20px; }
+        .wrap { max-width:1200px; margin:0 auto; }
+        .card { background:white; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,.06); border:1px solid #e0e0e0; padding:18px 20px; margin-bottom:18px; }
+        h1 { color:var(--primary); border-bottom:2px solid var(--primary); padding-bottom:8px; margin-top:0; font-size:1.5rem; }
+        h2 { color:var(--dark); font-size:.95rem; margin:0 0 12px; border-left:4px solid var(--primary); padding-left:10px; }
+
+        /* ── Selector de efecto ─────────────────────────────────────── */
+        .effect-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+        .eff-btn {
+            border:2px solid #e0e0e0; border-radius:8px; padding:12px 8px;
+            cursor:pointer; background:white; text-align:center; transition:all .15s;
+        }
+        .eff-btn:hover { border-color:var(--primary); }
+        .eff-btn.active { border-color:var(--primary); background:#e8f7fd; }
+        .eff-btn .eff-icon { font-size:1.8rem; display:block; margin-bottom:4px; }
+        .eff-btn .eff-name { font-weight:bold; font-size:.82rem; color:var(--dark); }
+        .eff-btn .eff-sub  { font-size:.68rem; color:#999; margin-top:2px; }
+
+        /* ── Layout principal ────────────────────────────────────────── */
+        .main-grid { display:grid; grid-template-columns:290px 1fr; gap:18px; }
+
+        /* ── Controles ───────────────────────────────────────────────── */
+        .ctrl { margin-bottom:14px; }
+        .ctrl-lbl {
+            display:flex; justify-content:space-between; align-items:baseline;
+            font-size:.75rem; font-weight:700; color:#555; text-transform:uppercase;
+            letter-spacing:.04em; margin-bottom:4px;
+        }
+        .ctrl-val { color:var(--primary); font-family:monospace; font-size:.95rem; font-weight:bold; text-transform:none; }
+        input[type=range] {
+            width:100%; -webkit-appearance:none; height:6px; border-radius:3px;
+            background:#d0e3f0; outline:none; cursor:pointer;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance:none; width:17px; height:17px; border-radius:50%;
+            background:var(--primary); cursor:pointer; box-shadow:0 1px 4px rgba(0,173,237,.4);
+        }
+        .ctrl-hint { font-size:.68rem; color:#aaa; margin-top:3px; }
+
+        /* ── Formas de onda del LFO ──────────────────────────────────── */
+        .shape-row { display:flex; gap:6px; margin-bottom:4px; }
+        .shape-btn {
+            flex:1; border:1.5px solid #ddd; border-radius:5px; padding:5px 2px;
+            cursor:pointer; background:white; text-align:center; font-size:.7rem;
+            font-weight:700; color:#555; transition:all .15s; line-height:1.2;
+        }
+        .shape-btn:hover { border-color:var(--primary); }
+        .shape-btn.active { border-color:var(--primary); background:#e8f7fd; color:var(--primary); }
+        .shape-icon { display:block; font-size:1rem; margin-bottom:1px; }
+
+        /* ── Zona LFO / Audio ────────────────────────────────────────── */
+        .rate-zone {
+            display:flex; justify-content:space-between; font-size:.65rem;
+            margin-top:2px; padding:3px 4px; border-radius:3px;
+        }
+        .zone-lfo  { color:#2e7d32; font-weight:bold; }
+        .zone-audio{ color:#c62828; font-weight:bold; }
+        .zone-marker { color:#555; }
+
+        /* ── Botones ─────────────────────────────────────────────────── */
+        .btn-row { display:flex; gap:8px; margin-top:6px; }
+        .btn {
+            flex:1; padding:9px 6px; border:none; border-radius:4px;
+            font-size:.85rem; font-weight:bold; cursor:pointer; transition:background .2s;
+        }
+        .btn-play { background:var(--primary); color:white; }
+        .btn-play:hover { background:#008cba; }
+        .btn-play.stop { background:#c62828; }
+        .btn-play.stop:hover { background:#b71c1c; }
+
+        /* ── Presets ────────────────────────────────────────────────── */
+        .presets-grid { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+        .preset-btn {
+            border:1px solid #d0e3f0; background:#f1f8ff; color:var(--dark);
+            padding:5px 10px; border-radius:4px; cursor:pointer; font-size:.75rem;
+            font-weight:600; transition:all .15s;
+        }
+        .preset-btn:hover { border-color:var(--primary); background:#e0f2fe; }
+
+        /* ── Caja pedagógica ─────────────────────────────────────────── */
+        .what-box {
+            background:#fff9e6; border-left:3px solid #ffb400;
+            padding:10px 12px; border-radius:0 4px 4px 0; margin-top:12px;
+        }
+        .what-title { font-size:.72rem; font-weight:bold; color:#e65100; margin-bottom:5px; }
+        .what-body  { font-size:.75rem; color:#5d4037; line-height:1.55; }
+        .synthedit-note {
+            background:#f3e5f5; border-left:3px solid #7b1fa2;
+            padding:8px 12px; border-radius:0 4px 4px 0; margin-top:8px;
+            font-size:.72rem; color:#4a148c;
+        }
+
+        /* ── Live params ─────────────────────────────────────────────── */
+        .live-box { background:#f1f8ff; border:1px solid #d0e3f0; border-radius:6px; padding:8px 12px; margin-top:10px; }
+        .live-row { display:flex; justify-content:space-between; font-size:.76rem; margin-bottom:3px; }
+        .live-k { color:#666; }
+        .live-v { color:var(--primary); font-family:monospace; font-weight:bold; }
+
+        /* ── Visualizaciones ─────────────────────────────────────────── */
+        .vis-col { display:flex; flex-direction:column; gap:12px; }
+        .osc-wrap { background:var(--osc-bg); border-radius:6px; border:1px solid #2a4a6a; padding:10px; }
+        .osc-hdr  { font-size:.7rem; font-weight:bold; color:#4ec9b0; text-transform:uppercase; letter-spacing:.5px; margin-bottom:5px; }
+        canvas { width:100%; display:block; border-radius:3px; }
+        #oscCanvas  { height:280px; }
+        #specCanvas { height:130px; }
+        .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:.7rem; color:#aaa; margin-top:6px; justify-content:center; }
+        .legend-item { display:flex; align-items:center; gap:4px; }
+        .ldot { width:9px; height:9px; border-radius:50%; }
+
+        /* ── Zona LFO marker en slider ───────────────────────────────── */
+        #rateTrack { position:relative; }
+        .lfo-zone-bar {
+            height:3px; border-radius:2px; margin-top:-2px; margin-bottom:4px;
+            background:linear-gradient(to right, #66bb6a 0%, #66bb6a 50%, #ffa726 70%, #ef5350 100%);
+        }
+
+        footer { text-align:center; font-size:.7rem; color:#999; margin-top:20px; }
+        @media(max-width:800px){ .main-grid{grid-template-columns:1fr;} .effect-grid{grid-template-columns:1fr 1fr;} }
+        @media(max-width:480px){ .effect-grid{grid-template-columns:1fr 1fr;} }
+    </style>
+</head>
+<body>
+<div class="wrap">
+
+    <div class="card">
+        <h1>StudioCalc | LFO Lab — Efectos de Modulación</h1>
+        <p style="font-size:.85rem;color:#666;margin:0">
+            El <strong>LFO</strong> (Low Frequency Oscillator) es una señal de control — no se escucha directamente,
+            pero <em>modifica</em> parámetros de la señal de audio. Experimenta cómo su velocidad (Rate),
+            profundidad (Depth) y forma de onda crean efectos distintos.
+        </p>
+    </div>
+
+    <!-- Selector de tipo de efecto -->
+    <div class="card">
+        <h2>1. Tipo de efecto de modulación</h2>
+        <div class="effect-grid">
+            <button class="eff-btn active" data-mod="am" onclick="setMod('am')">
+                <span class="eff-icon">🔊</span>
+                <span class="eff-name">TREMOLO</span>
+                <span class="eff-sub">AM · el LFO controla el volumen</span>
+            </button>
+            <button class="eff-btn" data-mod="fm" onclick="setMod('fm')">
+                <span class="eff-icon">🎵</span>
+                <span class="eff-name">VIBRATO / FM</span>
+                <span class="eff-sub">FM · el LFO controla el tono</span>
+            </button>
+            <button class="eff-btn" data-mod="pm" onclick="setMod('pm')">
+                <span class="eff-icon">🌀</span>
+                <span class="eff-name">CHORUS / FASE</span>
+                <span class="eff-sub">PM · el LFO controla la fase</span>
+            </button>
+            <button class="eff-btn" data-mod="ring" onclick="setMod('ring')">
+                <span class="eff-icon">🔔</span>
+                <span class="eff-name">RING MOD</span>
+                <span class="eff-sub">Multiplicación · robot · campanas</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="main-grid">
+
+        <!-- ── PANEL DE CONTROLES ───────────────────────────────────── -->
+        <div class="card" style="display:flex;flex-direction:column;">
+            <h2>2. Parámetros del LFO y señal</h2>
+
+            <!-- Forma de onda del LFO -->
+            <div class="ctrl">
+                <div class="ctrl-lbl">Forma de onda del LFO</div>
+                <div class="shape-row">
+                    <button class="shape-btn active" data-shape="sine" onclick="setShape('sine')">
+                        <span class="shape-icon">∿</span>Senoidal
+                    </button>
+                    <button class="shape-btn" data-shape="triangle" onclick="setShape('triangle')">
+                        <span class="shape-icon">∧</span>Triangular
+                    </button>
+                    <button class="shape-btn" data-shape="square" onclick="setShape('square')">
+                        <span class="shape-icon">⊓</span>Cuadrada
+                    </button>
+                    <button class="shape-btn" data-shape="sawtooth" onclick="setShape('sawtooth')">
+                        <span class="shape-icon">/|</span>Diente sierra
+                    </button>
+                </div>
+                <div class="ctrl-hint">La forma define el carácter del efecto: suave · lineal · brusco · rampa</div>
+            </div>
+
+            <!-- Rate del LFO -->
+            <div class="ctrl" id="rateTrack">
+                <div class="ctrl-lbl">Velocidad del LFO (Rate) <span class="ctrl-val" id="val-rate">4.0 Hz</span></div>
+                <div class="lfo-zone-bar"></div>
+                <input type="range" id="rate" min="0.1" max="30" value="4" step="0.1">
+                <div class="rate-zone">
+                    <span class="zone-lfo">◀ LFO (efecto percibido)</span>
+                    <span class="zone-marker" id="zoneLabel">LFO lento</span>
+                    <span class="zone-audio">(síntesis) ▶</span>
+                </div>
+                <div class="ctrl-hint">0.1–5 Hz: tremolo/vibrato lento · 5–15 Hz: rápido · >20 Hz: síntesis</div>
+            </div>
+
+            <!-- Depth del LFO -->
+            <div class="ctrl">
+                <div class="ctrl-lbl" id="depthLabel">Profundidad del LFO (Depth) <span class="ctrl-val" id="val-depth">50%</span></div>
+                <input type="range" id="depth" min="0" max="200" value="50" step="1">
+                <div class="ctrl-hint" id="depthHint">Cuánto modifica el LFO la señal — 0% = sin efecto</div>
+            </div>
+
+            <!-- Frecuencia de la señal de audio -->
+            <div class="ctrl">
+                <div class="ctrl-lbl">Frecuencia de la señal de audio (Fc) <span class="ctrl-val" id="val-fc">440 Hz</span></div>
+                <input type="range" id="fc" min="50" max="2000" value="440" step="10">
+                <div class="ctrl-hint">La señal de audio sobre la que actúa el LFO</div>
+            </div>
+
+            <!-- Botones + volumen -->
+            <div class="btn-row">
+                <button class="btn btn-play" id="playBtn" onclick="togglePlay()">▶ Escuchar</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+                <span style="font-size:0.78rem;color:#555;font-weight:600;">🔊 Volumen</span>
+                <input type="range" id="volSlider" min="0" max="100" value="70"
+                       style="flex:1;" oninput="setVolume(this.value)">
+                <span style="font-size:0.78rem;color:var(--primary);font-family:monospace;min-width:32px;" id="volLabel">70%</span>
+            </div>
+
+            <!-- Presets -->
+            <div style="margin-top:10px;">
+                <div style="font-size:.72rem;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;">Ejemplos predefinidos</div>
+                <div class="presets-grid" id="presetsGrid"></div>
+            </div>
+
+            <!-- Live params -->
+            <div class="live-box" id="liveBox"></div>
+
+            <!-- Caja pedagógica -->
+            <div class="what-box">
+                <div class="what-title" id="whatTitle">🔊 ¿Qué está pasando?</div>
+                <div class="what-body" id="whatBody"></div>
+            </div>
+            <div class="synthedit-note" id="syntheitNote"></div>
+        </div>
+
+        <!-- ── VISUALIZACIONES ────────────────────────────────────────── -->
+        <div class="vis-col">
+            <div class="osc-wrap">
+                <div class="osc-hdr">Osciloscopio — dominio del tiempo</div>
+                <canvas id="oscCanvas"></canvas>
+                <div class="legend">
+                    <div class="legend-item"><div class="ldot" style="background:var(--col-lfo)"></div> LFO (señal de control)</div>
+                    <div class="legend-item"><div class="ldot" style="background:var(--col-sig)"></div> Señal de audio (Fc)</div>
+                    <div class="legend-item"><div class="ldot" style="background:var(--col-res)"></div> Resultado (audio modulado)</div>
+                </div>
+            </div>
+            <div class="osc-wrap">
+                <div class="osc-hdr">Espectro — frecuencias presentes en la señal</div>
+                <canvas id="specCanvas"></canvas>
+                <div class="legend">
+                    <div class="legend-item"><div class="ldot" style="background:var(--primary)"></div> Portadora Fc</div>
+                    <div class="legend-item"><div class="ldot" style="background:var(--col-spec)"></div> Nuevas frecuencias generadas por la modulación</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>Prof. Ricardo Cabrera V. | Para estudiantes de Tecnología de Sonido — Web Audio API</footer>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════════
+//  ESTADO
+// ═══════════════════════════════════════════════════════════════════
+const S = {
+    mod:'am', shape:'sine', fc:440, rate:4, depth:0.5,
+    isPlaying:false, tOff:0, lastFrame:0
+};
+
+// ═══════════════════════════════════════════════════════════════════
+//  PRESETS
+// ═══════════════════════════════════════════════════════════════════
+const PRESETS = [
+    { label:'Tremolo suave',  mod:'am',   shape:'sine',     fc:440, rate:4,   depth:60,  desc:'Clásico efecto de guitarra vintage' },
+    { label:'Tremolo brusco', mod:'am',   shape:'square',   fc:440, rate:5,   depth:100, desc:'Corte on/off — efecto stutter' },
+    { label:'Vibrato',        mod:'fm',   shape:'sine',     fc:440, rate:5.5, depth:18,  desc:'Variación de tono como en cuerda/viento' },
+    { label:'Síntesis FM',    mod:'fm',   shape:'sine',     fc:220, rate:220, depth:80,  desc:'Timbre rico tipo campana/órgano' },
+    { label:'Robot voz',      mod:'ring', shape:'square',   fc:200, rate:60,  depth:100, desc:'Efecto robótico con cuadrada' },
+    { label:'Campana',        mod:'ring', shape:'sine',     fc:220, rate:370, depth:100, desc:'Timbre inarmónico tipo campana' },
+    { label:'Chorus sutil',   mod:'pm',   shape:'sine',     fc:440, rate:1.5, depth:25,  desc:'Modulación de fase — efecto espacial' },
+    { label:'Phaser',         mod:'pm',   shape:'triangle', fc:440, rate:0.8, depth:80,  desc:'Cambio de fase periódico triangular' },
+];
+
+// ═══════════════════════════════════════════════════════════════════
+//  TEXTOS PEDAGÓGICOS
+// ═══════════════════════════════════════════════════════════════════
+const WHAT = {
+    am: {
+        title:'🔊 TREMOLO — el LFO controla el VOLUMEN',
+        body:'El LFO hace que el volumen de la señal suba y baje periódicamente. La <strong>velocidad (Rate)</strong> determina cuán rápido sube y baja (¿lento y relajante o rápido y nervioso?). La <strong>profundidad (Depth)</strong> determina cuánto varía: al 0% no cambia nada; al 100% el volumen llega a cero en el punto mínimo; por encima de 100% hay sobremodulación — el audio se invierte y suena distorsionado.<br><br>En el osciloscopio verás cómo la envolvente de la señal modulada sigue la forma del LFO.',
+        synth:'En SynthEdit: conecta un LFO → VCA (Voltage Controlled Amplifier). El LFO va a la entrada de control del VCA; la señal de audio va a la entrada de señal.'
+    },
+    fm: {
+        title:'🎵 VIBRATO / FM — el LFO controla el TONO (pitch)',
+        body:'El LFO hace que la frecuencia de la señal suba y baje. Con <strong>Rate lento</strong> (< 10 Hz) esto es un <strong>vibrato</strong> — muy parecido al vibrato de violín. Con <strong>Rate en rango de audio</strong> (> 20 Hz) el modulador ya no es un LFO sino un oscilador de audio: estás haciendo <strong>síntesis FM</strong>, que genera nuevas frecuencias (armónicos e inarmónicos) — el timbre cambia radicalmente.<br><br>Observa el espectro: en LFO hay poco cambio; en audio rate aparecen muchas líneas nuevas.',
+        synth:'En SynthEdit: LFO → entrada de frecuencia del VCO. Para vibrato: Rate 4–8 Hz, Depth pequeña. Para síntesis FM: Rate en audio, Depth alta.'
+    },
+    pm: {
+        title:'🌀 CHORUS / FASE — el LFO controla la FASE',
+        body:'El LFO desplaza la fase de la señal continuamente. Perceptualmente es similar al vibrato pero con un carácter más espacial y menos "melódico". Este principio está en el corazón del <strong>Chorus</strong> y el <strong>Flanger</strong>: varias copias con fase desplazada crean sensación de amplitud.<br><br>Con Rate lento y Depth moderada escucharás un efecto espacial sutil.',
+        synth:'En SynthEdit: existen módulos de Phase Modulator. En efectos reales el chorus mezcla la señal original con versiones PM ligeramente moduladas para dar profundidad.'
+    },
+    ring: {
+        title:'🔔 RING MOD — multiplicación pura, sonidos nuevos',
+        body:'Las dos señales se <strong>multiplican entre sí</strong>. El resultado matemático son dos nuevas frecuencias: <strong>Fc+Rate</strong> y <strong>Fc−Rate</strong>. La frecuencia original desaparece por completo.<br><br>• Con Rate lento: efecto de tremolo pero "hueco" (sin portadora)<br>• Con Rate en audio: timbre metálico o inarmónico<br>• Con Rate = Fc: crea una frecuencia doble y cero (efecto drástico)<br>• Con onda cuadrada: suena robótico porque genera muchos armónicos<br><br>Prueba el preset "Campana": Fc=220 Hz, Rate=370 Hz → nuevas frecuencias a 590 Hz y 150 Hz. ¡No existe ningún armónico de las originales!',
+        synth:'En SynthEdit: módulo Ring Modulator. Conecta las dos fuentes como señal A y B. Para efecto robótico usa una onda cuadrada como moduladora.'
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════════
+//  CANVAS
+// ═══════════════════════════════════════════════════════════════════
+const oscCanvas  = document.getElementById('oscCanvas');
+const specCanvas = document.getElementById('specCanvas');
+const ctxO = oscCanvas.getContext('2d');
+const ctxS = specCanvas.getContext('2d');
+
+function resizeCanvas(c) {
+    const dpr = window.devicePixelRatio || 1;
+    const r = c.getBoundingClientRect();
+    c.width = r.width * dpr; c.height = r.height * dpr;
+    c.getContext('2d').scale(dpr, dpr);
+    c.style.width = r.width + 'px'; c.style.height = r.height + 'px';
+}
+function resizeAll() { resizeCanvas(oscCanvas); resizeCanvas(specCanvas); }
+window.addEventListener('resize', () => { resizeAll(); });
+resizeAll();
+
+// ═══════════════════════════════════════════════════════════════════
+//  WEB AUDIO
+// ═══════════════════════════════════════════════════════════════════
+let audioCtx, masterGain, nodes = {};
+
+function ensureCtx() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        // Nodo de volumen maestro — siempre presente en la cadena
+        masterGain = audioCtx.createGain();
+        masterGain.gain.value = (parseInt(document.getElementById('volSlider').value) || 70) / 100;
+        masterGain.connect(audioCtx.destination);
+    }
+    // Los navegadores modernos suspenden el contexto hasta que hay
+    // una interacción del usuario — lo reanudamos explícitamente.
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function setVolume(pct) {
+    document.getElementById('volLabel').textContent = pct + '%';
+    if (masterGain) masterGain.gain.setTargetAtTime(pct / 100, audioCtx.currentTime, 0.02);
+}
+
+function killNodes() {
+    ['carrier','lfo','constant'].forEach(k => { if(nodes[k]) { try{nodes[k].stop();}catch(e){} } });
+    ['modGain','outGain'].forEach(k => { if(nodes[k]) nodes[k].disconnect(); });
+    nodes = {};
+}
+
+function buildGraph() {
+    killNodes();
+    const ac = audioCtx;
+    nodes.carrier = ac.createOscillator();
+    nodes.lfo     = ac.createOscillator();
+    nodes.outGain = ac.createGain();
+    nodes.outGain.gain.value = 0.4;
+    nodes.carrier.type = 'sine';
+    nodes.lfo.type     = S.shape;
+    nodes.carrier.frequency.value = S.fc;
+    nodes.lfo.frequency.value     = S.rate;
+    nodes.modGain = ac.createGain();
+
+    if (S.mod === 'am') {
+        nodes.constant = ac.createConstantSourceNode();
+        nodes.constant.offset.value = 1.0;
+        nodes.modGain.gain.value = S.depth;
+        nodes.constant.connect(nodes.outGain.gain);
+        nodes.lfo.connect(nodes.modGain);
+        nodes.modGain.connect(nodes.outGain.gain);
+        nodes.carrier.connect(nodes.outGain);
+        nodes.outGain.connect(masterGain);
+    } else if (S.mod === 'fm') {
+        nodes.modGain.gain.value = S.depth * S.fc;
+        nodes.lfo.connect(nodes.modGain);
+        nodes.modGain.connect(nodes.carrier.frequency);
+        nodes.carrier.connect(nodes.outGain);
+        nodes.outGain.connect(masterGain);
+    } else if (S.mod === 'pm') {
+        nodes.modGain.gain.value = S.depth * 2400;
+        nodes.lfo.connect(nodes.modGain);
+        nodes.modGain.connect(nodes.carrier.detune);
+        nodes.carrier.connect(nodes.outGain);
+        nodes.outGain.connect(masterGain);
+    } else if (S.mod === 'ring') {
+        nodes.modGain.gain.value = S.depth;
+        nodes.lfo.connect(nodes.modGain);
+        nodes.modGain.connect(nodes.outGain.gain);
+        nodes.carrier.connect(nodes.outGain);
+        nodes.outGain.connect(masterGain);
+    }
+
+    nodes.carrier.start(); nodes.lfo.start();
+    if (nodes.constant) nodes.constant.start();
+}
+
+function updateAudioParams() {
+    if (!audioCtx || !nodes.carrier) return;
+    const now = audioCtx.currentTime;
+    nodes.carrier.frequency.setTargetAtTime(S.fc, now, 0.01);
+    nodes.lfo.frequency.setTargetAtTime(S.rate, now, 0.01);
+    if (S.mod==='am')   nodes.modGain.gain.setTargetAtTime(S.depth, now, 0.01);
+    if (S.mod==='fm')   nodes.modGain.gain.setTargetAtTime(S.depth * S.fc, now, 0.01);
+    if (S.mod==='pm')   nodes.modGain.gain.setTargetAtTime(S.depth * 2400, now, 0.01);
+    if (S.mod==='ring') nodes.modGain.gain.setTargetAtTime(S.depth, now, 0.01);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  FORMAS DE ONDA LFO (para visualización matemática)
+// ═══════════════════════════════════════════════════════════════════
+function lfoWave(phase) { // phase = 2π·t·rate
+    switch(S.shape) {
+        case 'sine':     return Math.sin(phase);
+        case 'triangle': return (2/Math.PI) * Math.asin(Math.sin(phase));
+        case 'square':   return Math.sign(Math.sin(phase)) || 0;
+        case 'sawtooth': { const p = phase/(2*Math.PI); return 2*(p - Math.floor(p+0.5)); }
+    }
+    return 0;
+}
+
+function resultSignal(t) {
+    const phase = 2 * Math.PI * S.rate * t;
+    const m̂ = lfoWave(phase);
+    const ωc = 2 * Math.PI * S.fc;
+    if (S.mod==='am')   return (1 + S.depth * m̂) * Math.sin(ωc * t);
+    if (S.mod==='fm')   { const β = S.rate>0 ? S.depth*S.fc/S.rate : 0; return Math.sin(ωc*t + β*m̂); }
+    if (S.mod==='pm')   return Math.sin(ωc*t + S.depth*Math.PI*m̂);
+    if (S.mod==='ring') return S.depth * m̂ * Math.sin(ωc * t);
+    return 0;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  DIBUJO — OSCILOSCOPIO
+// ═══════════════════════════════════════════════════════════════════
+function drawGrid(ctx2d, w, h, rows=6, cols=10) {
+    ctx2d.strokeStyle='#1a2332'; ctx2d.lineWidth=0.6;
+    for(let i=0;i<=cols;i++){const x=i/cols*w; ctx2d.beginPath();ctx2d.moveTo(x,0);ctx2d.lineTo(x,h);ctx2d.stroke();}
+    for(let j=0;j<=rows;j++){const y=j/rows*h; ctx2d.beginPath();ctx2d.moveTo(0,y);ctx2d.lineTo(w,y);ctx2d.stroke();}
+}
+
+function plotWave(ctx2d, color, fn, y0, pH, amp, t0, pps, w) {
+    ctx2d.strokeStyle='#1e2d3a'; ctx2d.lineWidth=0.5;
+    ctx2d.beginPath(); ctx2d.moveTo(0,y0+pH/2); ctx2d.lineTo(w,y0+pH/2); ctx2d.stroke();
+    ctx2d.strokeStyle=color; ctx2d.lineWidth=1.8; ctx2d.beginPath();
+    for(let x=0;x<w;x++){
+        const t=t0+x/pps, v=fn(t);
+        const y=(y0+pH/2)-(v/(amp||0.01))*(pH/2-4);
+        x===0?ctx2d.moveTo(x,y):ctx2d.lineTo(x,y);
+    }
+    ctx2d.stroke();
+}
+
+function drawOsc(t0) {
+    const w=oscCanvas.width/(window.devicePixelRatio||1);
+    const h=oscCanvas.height/(window.devicePixelRatio||1);
+    ctxO.clearRect(0,0,w,h); drawGrid(ctxO,w,h,6,10);
+    const pH=h/3-4, gap=6;
+    // Ventana temporal: 3 ciclos del LFO (mínimo 2 ciclos de Fc)
+    const twLFO = Math.max(3/S.rate, 2/S.fc, 0.01);
+    const tw = Math.min(twLFO, 0.2);
+    const pps = w/tw;
+
+    // LFO — referencia FIJA por modo para que la amplitud visual cambie con Depth.
+    // Bug anterior: amp=S.depth cancelaba la escala → la onda siempre se veía igual.
+    // Referencia adaptada al rango útil de cada modo:
+    //   AM/Ring: max 200% (permite ver sobremodulación)
+    //   FM/PM:   max  50% (el vibrato útil está en 5–25%; con 50% de ref se ve bien)
+    const LFO_REF = (S.mod==='am'||S.mod==='ring') ? 2.0 : 0.5;
+    plotWave(ctxO,'#00e676', t=>{
+        return S.depth * lfoWave(2*Math.PI*S.rate*t);
+    }, 0, pH, LFO_REF, t0, pps, w);
+
+    // Línea punteada mostrando la referencia máxima del modo
+    ctxO.save();
+    ctxO.strokeStyle='rgba(0,230,118,0.28)'; ctxO.lineWidth=0.8; ctxO.setLineDash([4,4]);
+    // Línea al 100% del rango útil del modo (LFO_REF)
+    const refLine = (LFO_REF/LFO_REF)*(pH/2-4); // = pH/2-4 (borde del panel)
+    ctxO.beginPath(); ctxO.moveTo(0,pH/2-(pH/2-4)); ctxO.lineTo(w,pH/2-(pH/2-4)); ctxO.stroke();
+    ctxO.beginPath(); ctxO.moveTo(0,pH/2+(pH/2-4)); ctxO.lineTo(w,pH/2+(pH/2-4)); ctxO.stroke();
+    ctxO.setLineDash([]);
+    // Etiqueta del máximo
+    const refLabel = S.mod==='am'||S.mod==='ring' ? '200%' : '50%';
+    ctxO.fillStyle='rgba(0,230,118,0.35)'; ctxO.font='8px monospace';
+    ctxO.fillText('± '+refLabel, w-36, 10);
+    ctxO.restore();
+
+    // Señal portadora
+    plotWave(ctxO,'#6e7a8a', t=>Math.sin(2*Math.PI*S.fc*t), pH+gap, pH, 1.0, t0, pps, w);
+
+    // Resultado
+    const rAmp = S.mod==='am' ? Math.max(1+S.depth,1.05) : 1.05;
+    plotWave(ctxO,'#7c4dff', resultSignal, (pH+gap)*2, pH, rAmp, t0, pps, w);
+
+    // Etiquetas
+    const lbl=(color,text,y)=>{ctxO.fillStyle=color;ctxO.font='9px monospace';ctxO.fillText(text,4,y);};
+    lbl('#00e676','LFO',11); lbl('#6e7a8a','Fc',pH+gap+11); lbl('#7c4dff','y(t)',(pH+gap)*2+11);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  DIBUJO — ESPECTRO SIMPLIFICADO
+// ═══════════════════════════════════════════════════════════════════
+function computeLines() {
+    const fc=S.fc, fm=S.rate, d=S.depth;
+    // Solo las componentes más importantes para pedagogía básica
+    if (S.mod==='am') {
+        const lines=[{f:fc,a:1.0,carrier:true},{f:fc+fm,a:d/2},{f:Math.max(1,fc-fm),a:d/2}];
+        if (d>1) { lines.push({f:fc+2*fm,a:(d-1)/4}); lines.push({f:Math.max(1,fc-2*fm),a:(d-1)/4}); }
+        return lines;
+    }
+    if (S.mod==='fm') {
+        const beta = fm>0 ? d*fc/fm : 0;
+        const lines=[{f:fc,a:1.0,carrier:true}];
+        const nMax = Math.min(8, Math.ceil(beta)+3);
+        for(let n=1;n<=nMax;n++){
+            const amp = Math.exp(-n*0.35) * Math.min(1, beta/n);
+            if(amp>0.04){ lines.push({f:fc+n*fm,a:amp}); if(fc-n*fm>0) lines.push({f:fc-n*fm,a:amp}); }
+        }
+        return lines;
+    }
+    if (S.mod==='pm') {
+        const beta = d*Math.PI;
+        const lines=[{f:fc,a:1.0,carrier:true}];
+        const nMax = Math.min(6, Math.ceil(beta)+2);
+        for(let n=1;n<=nMax;n++){
+            const amp = Math.exp(-n*0.5)*Math.min(1,beta/n);
+            if(amp>0.04){ lines.push({f:fc+n*fm,a:amp}); if(fc-n*fm>0) lines.push({f:fc-n*fm,a:amp}); }
+        }
+        return lines;
+    }
+    if (S.mod==='ring') {
+        const lines=[]; // sin portadora
+        if(fc+fm>0) lines.push({f:fc+fm,a:d/2});
+        if(fc-fm>0) lines.push({f:fc-fm,a:d/2});
+        if(S.shape==='square'){
+            for(let n=1;n<=5;n++){
+                const h=2*n+1;
+                if(fc+h*fm>0) lines.push({f:fc+h*fm,a:d/(2*h)});
+                if(fc-h*fm>0) lines.push({f:fc-h*fm,a:d/(2*h)});
+            }
+        }
+        return lines;
+    }
+    return [];
+}
+
+function drawSpectrum() {
+    const w=specCanvas.width/(window.devicePixelRatio||1);
+    const h=specCanvas.height/(window.devicePixelRatio||1);
+    ctxS.clearRect(0,0,w,h); drawGrid(ctxS,w,h,4,8);
+    const lines=computeLines(); if(!lines.length) return;
+    const maxF=Math.max(...lines.map(l=>l.f),S.fc)*1.25;
+    const maxA=Math.max(...lines.map(l=>l.a),0.01);
+    const padB=22, padT=8, plotH=h-padB-padT;
+
+    ctxS.fillStyle='#33445a'; ctxS.font='9px monospace';
+    for(let i=0;i<=4;i++){
+        const f=i/4*maxF; const x=i/4*w;
+        const label=f>=1000?(f/1000).toFixed(1)+'k':Math.round(f)+'';
+        ctxS.fillText(label+'Hz',x+2,h-5);
+    }
+
+    for(const l of lines){
+        if(l.f<=0||l.f>maxF) continue;
+        const x=l.f/maxF*w;
+        const bh=(l.a/maxA)*plotH;
+        const y=padT+plotH-bh;
+        const color=l.carrier?'#00aded':'#ff7043';
+        ctxS.strokeStyle=color; ctxS.lineWidth=Math.max(2,w*0.003);
+        ctxS.beginPath(); ctxS.moveTo(x,padT+plotH); ctxS.lineTo(x,y); ctxS.stroke();
+        ctxS.fillStyle=l.carrier?'#00aded':'#ff9080'; ctxS.font='8px monospace';
+        const lbl=Math.round(l.f)+' Hz';
+        const lw=ctxS.measureText(lbl).width;
+        ctxS.fillText(lbl,Math.max(1,Math.min(w-lw-1,x-lw/2)),Math.max(padT+10,y-3));
+    }
+
+    // Nota ring mod: "Fc suprimida"
+    if(S.mod==='ring'){
+        ctxS.fillStyle='#ff7043'; ctxS.font='bold 9px Arial';
+        ctxS.fillText('Fc SUPRIMIDA (no aparece)',4,padT+14);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  LOOP DE ANIMACIÓN
+// ═══════════════════════════════════════════════════════════════════
+function animate(ts){
+    if(S.isPlaying){ const dt=Math.min((ts-S.lastFrame)/1000,0.05); S.tOff+=dt; }
+    S.lastFrame=ts;
+    drawOsc(S.tOff); drawSpectrum();
+    requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+
+// ═══════════════════════════════════════════════════════════════════
+//  ACTUALIZACIÓN UI
+// ═══════════════════════════════════════════════════════════════════
+const DEPTH_HINTS = {
+    am:   'AM: 100% = modulación total · >100% = sobremodulación (distorsión)',
+    fm:   'FM: controla cuánto se desvía el tono · valor alto = timbre más complejo',
+    pm:   'PM: profundidad del desplazamiento de fase · 100% = ±π rad (180°)',
+    ring: 'Ring: amplitud de la señal multiplicadora · 0% = silencio'
+};
+const DEPTH_LABELS = {
+    am:'Profundidad de modulación (μ)', fm:'Depth (→ desviación de tono)',
+    pm:'Profundidad de fase (Δφ)', ring:'Amplitud del multiplicador'
+};
+const ZONE_LABELS = (r) => {
+    if(r<1) return 'LFO muy lento (<1 Hz)';
+    if(r<5) return 'LFO lento (1–5 Hz)';
+    if(r<10) return 'LFO medio (5–10 Hz)';
+    if(r<20) return 'LFO rápido (10–20 Hz)';
+    return '⚡ Rango de audio (>20 Hz)';
+};
+
+function liveRows() {
+    const {fc,rate,depth,mod}=S;
+    let rows=[];
+    if(mod==='am'){
+        const mu=depth;
+        rows=[
+            ['Índice de modulación μ', mu.toFixed(2)+(mu>1?' ⚠️ sobremod.':'')],
+            ['Ciclos LFO por segundo', rate.toFixed(1)+' Hz'],
+            ['Banda lateral superior', (fc+rate).toFixed(1)+' Hz'],
+            ['Banda lateral inferior', Math.max(0,fc-rate).toFixed(1)+' Hz'],
+        ];
+    } else if(mod==='fm'){
+        const dF=depth*fc, beta=rate>0?dF/rate:0;
+        rows=[
+            ['Desviación de tono (Δf)', dF.toFixed(0)+' Hz'],
+            ['Índice FM β = Δf/fm', beta.toFixed(2)+(beta>5?' (complejo)':beta>1?' (rico)':' (suave)')],
+            ['Tipo de efecto', rate<15?'Vibrato (LFO)':'Síntesis FM (audio)'],
+        ];
+    } else if(mod==='pm'){
+        rows=[
+            ['Desviación de fase Δφ', (depth*180).toFixed(0)+'°  ('+( depth*Math.PI).toFixed(2)+' rad)'],
+            ['Efecto percibido', rate<10?'Chorus suave':'PM más intensa'],
+        ];
+    } else if(mod==='ring'){
+        rows=[
+            ['Nueva frecuencia alta', (fc+rate).toFixed(1)+' Hz'],
+            ['Nueva frecuencia baja', Math.max(0,fc-rate).toFixed(1)+' Hz'],
+            ['Portadora original', 'SUPRIMIDA'],
+        ];
+    }
+    return rows.map(([k,v])=>`<div class="live-row"><span class="live-k">${k}</span><span class="live-v">${v}</span></div>`).join('');
+}
+
+function updateUI() {
+    S.fc    = parseFloat(document.getElementById('fc').value);
+    S.rate  = parseFloat(document.getElementById('rate').value);
+    S.depth = parseFloat(document.getElementById('depth').value)/100;
+
+    document.getElementById('val-fc').textContent    = S.fc+' Hz';
+    document.getElementById('val-rate').textContent  = S.rate.toFixed(1)+' Hz';
+    document.getElementById('val-depth').textContent = Math.round(S.depth*100)+'%';
+    document.getElementById('zoneLabel').textContent = ZONE_LABELS(S.rate);
+    document.getElementById('depthLabel').childNodes[0].textContent = DEPTH_LABELS[S.mod]+' ';
+    document.getElementById('depthHint').textContent  = DEPTH_HINTS[S.mod];
+    document.getElementById('liveBox').innerHTML      = liveRows();
+    document.getElementById('whatTitle').innerHTML    = WHAT[S.mod].title;
+    document.getElementById('whatBody').innerHTML     = WHAT[S.mod].body;
+    document.getElementById('syntheitNote').innerHTML = '🟣 <strong>En SynthEdit:</strong> '+WHAT[S.mod].synth;
+    updateAudioParams();
+}
+
+function setMod(m) {
+    S.mod=m;
+    document.querySelectorAll('.eff-btn').forEach(b=>b.classList.toggle('active',b.dataset.mod===m));
+    const defs={am:{fc:440,rate:4,depth:60},fm:{fc:440,rate:5,depth:20},pm:{fc:440,rate:1.5,depth:25},ring:{fc:440,rate:440,depth:100}};
+    const d=defs[m];
+    document.getElementById('fc').value=d.fc;
+    document.getElementById('rate').value=d.rate;
+    document.getElementById('depth').value=d.depth;
+    if(S.isPlaying) buildGraph();
+    updateUI();
+}
+
+function setShape(sh) {
+    S.shape=sh;
+    document.querySelectorAll('.shape-btn').forEach(b=>b.classList.toggle('active',b.dataset.shape===sh));
+    if(S.isPlaying) buildGraph();
+    updateUI();
+}
+
+function applyPreset(p) {
+    S.mod=p.mod; S.shape=p.shape;
+    document.querySelectorAll('.eff-btn').forEach(b=>b.classList.toggle('active',b.dataset.mod===p.mod));
+    document.querySelectorAll('.shape-btn').forEach(b=>b.classList.toggle('active',b.dataset.shape===p.shape));
+    document.getElementById('fc').value=p.fc;
+    document.getElementById('rate').value=p.rate;
+    document.getElementById('depth').value=p.depth;
+    if(S.isPlaying) buildGraph();
+    updateUI();
+}
+
+function togglePlay() {
+    ensureCtx();
+    S.isPlaying=!S.isPlaying;
+    const btn=document.getElementById('playBtn');
+    if(S.isPlaying){ buildGraph(); btn.textContent='⏹ Detener'; btn.classList.add('stop'); }
+    else { killNodes(); btn.textContent='▶ Escuchar'; btn.classList.remove('stop'); }
+}
+
+// Eventos sliders
+['fc','rate','depth'].forEach(id=>document.getElementById(id).addEventListener('input',updateUI));
+
+// ═══════════════════════════════════════════════════════════════════
+//  INIT — PRESETS Y UI INICIAL
+// ═══════════════════════════════════════════════════════════════════
+const pg=document.getElementById('presetsGrid');
+PRESETS.forEach(p=>{
+    const btn=document.createElement('button');
+    btn.className='preset-btn'; btn.textContent=p.label; btn.title=p.desc;
+    btn.onclick=()=>applyPreset(p);
+    pg.appendChild(btn);
+});
+updateUI();
+</script>
+</body>
+</html>

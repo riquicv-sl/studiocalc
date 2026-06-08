@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudioCalc | Modos Normales (MNV)</title>
+    <style>
+        :root { --primary: #00aded; --dark: #2c3e50; --bg: #f8f9fa; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: var(--bg); color: #333; margin: 0; padding: 20px; line-height: 1.5; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .card { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e0e0e0; padding: 20px; margin-bottom: 20px; }
+        h1 { color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-top: 0; font-size: 1.5rem; }
+        h2 { color: var(--dark); font-size: 1.1rem; margin-top: 0; border-left: 4px solid var(--primary); padding-left: 10px; }
+
+        .grid-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 15px; }
+        label { display: block; font-size: 0.75rem; font-weight: bold; color: #666; text-transform: uppercase; margin-bottom: 5px; }
+        input[type="number"] { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-size: 1rem; box-sizing: border-box; }
+        input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(0, 173, 237, 0.2); }
+
+        button { background-color: var(--primary); color: white; border: none; padding: 12px 24px; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; font-size: 1rem; transition: background 0.2s; }
+        button:hover { background-color: #008cba; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 10px; }
+        th { background-color: var(--primary); color: white; padding: 8px; text-align: center; }
+        td { border-bottom: 1px solid #eee; padding: 6px; text-align: center; }
+        /* Zebra striping solo para filas sin color de grupo (las coloreadas tienen style inline que prevalece) */
+        tr:nth-child(even) { background-color: #fafafa; }
+
+        .canvas-container { position: relative; height: 400px; width: 100%; background: white; border: 1px solid #eee; border-radius: 4px; margin-top: 10px; overflow: hidden; }
+        canvas { width: 100%; height: 100%; display: block; }
+
+        .verdict { padding: 10px; border-radius: 4px; font-weight: bold; text-align: center; margin-top: 10px; font-size: 0.9rem; }
+        .pass { background-color: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+        .fail { background-color: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
+
+        .legend-clusters { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; font-size: 0.78rem; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; border: 1px solid rgba(0,0,0,0.18); flex-shrink: 0; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h1>StudioCalc | Modos Normales de Vibración</h1>
+        <p style="font-size: 0.9rem; color: #666;">Análisis ondulatorio riguroso para salas paralelepípedas.</p>
+    </div>
+
+    <div class="card">
+        <h2>1. Parámetros de la Sala</h2>
+        <div class="grid-inputs">
+            <div><label>Largo (m)</label><input type="number" id="lx" placeholder="Ej: 8.5" step="0.1" min="0.1"></div>
+            <div><label>Ancho (m)</label><input type="number" id="ly" placeholder="Ej: 6.2" step="0.1" min="0.1"></div>
+            <div><label>Alto (m)</label><input type="number" id="lz" placeholder="Ej: 3.0" step="0.1" min="0.1"></div>
+            <div><label>T. Reverberación (s)</label><input type="number" id="tr" value="0.5" step="0.1" min="0.1"></div>
+            <div><label>Vel. Sonido (m/s)</label><input type="number" id="c" value="344" step="1" min="300"></div>
+        </div>
+        <button onclick="calculate()">Calcular Análisis Modal</button>
+    </div>
+
+    <div id="output" style="display:none;">
+
+        <!-- Fila: Geometría+Schroeder (izquierda) | Bolt (derecha) -->
+        <!-- margin-bottom:20px iguala el espaciado con la sección 5 (Bonello) -->
+        <div style="display:grid; grid-template-columns: 1fr auto; gap:20px; align-items:stretch; margin-bottom:20px;">
+
+            <!-- Columna izquierda: las dos tarjetas se reparten la altura disponible -->
+            <div style="display:flex; flex-direction:column; gap:20px;">
+                <div class="card" style="margin-bottom:0; flex:1;">
+                    <h2>2. Geometría</h2>
+                    <div style="text-align:center; padding:10px; background:#f1f8ff; border-radius:6px; border:1px solid #d0e3f0;">
+                        <span style="font-size:1.5rem; font-weight:bold; color:var(--primary);" id="vol">-</span>
+                        <div style="font-size:0.8rem; color:#555;">volumen (m³)</div>
+                    </div>
+                    <div style="margin-top:10px; display:flex; justify-content:space-around; font-size:0.9rem;">
+                        <div>Área piso: <b id="floorA">-</b> m²</div>
+                        <div>Área total: <b id="totalA">-</b> m²</div>
+                    </div>
+                </div>
+                <div class="card" style="margin-bottom:0; flex:1;">
+                    <h2>3. Frecuencia de Schroeder</h2>
+                    <div style="text-align:center; padding:10px; background:#f1f8ff; border-radius:6px; border:1px solid #d0e3f0;">
+                        <span style="font-size:1.5rem; font-weight:bold; color:var(--primary);" id="fs">-</span>
+                        <div style="font-size:0.8rem; color:#555;">límite modal (Hz)</div>
+                    </div>
+                    <p style="font-size:0.78rem; color:#777; margin:8px 0 0;">Por encima de esta frecuencia el campo es estadísticamente difuso; el análisis modal pierde validez.</p>
+                </div>
+            </div>
+
+            <!-- Columna derecha: Bolt — canvas con aspecto correcto: plotH/plotW = 1.4 exacto -->
+            <!-- padL=40 padR=12 padT=14 padB=38 → plotW=208 plotH=291 → canvas 260×343 -->
+            <div class="card" style="margin-bottom:0; width:250px; flex-shrink:0; display:flex; flex-direction:column;">
+                <h2>4. Bolt (Ameba)</h2>
+                <div id="boltVerdict" class="verdict" style="font-size:0.78rem; padding:6px;">Esperando...</div>
+                <!-- canvas 200×283: plotW=152 plotH=243 → 152 px/unidad en X e Y -->
+                <div style="width:200px; height:283px; box-sizing:border-box; background:white; border:1px solid #eee; border-radius:4px; margin-top:8px; overflow:hidden; flex-shrink:0;">
+                    <canvas id="boltCanvas" style="width:100%; height:100%; display:block;"></canvas>
+                </div>
+                <p style="font-size:0.68rem; color:#888; text-align:center; margin-top:4px;">Bolt (1946) · h = dimensión menor</p>
+            </div>
+
+        </div>
+
+        <div class="card">
+            <h2>5. Criterio de Bonello</h2>
+            <div id="bonelloVerdict" class="verdict">Esperando datos...</div>
+            <div class="canvas-container"><canvas id="bonelloCanvas"></canvas></div>
+            <p style="font-size:0.75rem; color:#666; text-align:center; margin-top:5px;">Densidad modal por tercio de octava. Criterio Bonello (1981): la curva debe ser monótonamente no decreciente.</p>
+        </div>
+
+        <div class="card">
+            <h2>6. Espectro de Modos (Primeros 50)</h2>
+            <div id="clusterInfo" style="font-size:0.8rem; color:#555; margin-bottom:6px;"></div>
+            <div id="clusterLegend" class="legend-clusters"></div>
+            <div style="overflow-x:auto; margin-top:10px;">
+                <table id="modesTable">
+                    <thead><tr><th>#</th><th>Frec. (Hz)</th><th>Nota</th><th>k, m, n</th><th>Tipo</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <footer style="text-align:center; font-size:0.7rem; color:#999; margin-top:30px;">
+        Prof. Ricardo Cabrera V. | Generado sin librerías externas
+    </footer>
+</div>
+
+<script>
+    const NOTES = ["Do","Do#","Re","Re#","Mi","Fa","Fa#","Sol","Sol#","La","La#","Si"];
+
+    // Paleta de colores para grupos de modos solapados (fondo, texto)
+    const CLUSTER_BG   = ['#ffe082','#ef9a9a','#ce93d8','#80cbc4','#90caf9','#a5d6a7','#ffcc80','#f48fb1','#bcaaa4','#b0bec5'];
+    const CLUSTER_TEXT = ['#5d4037','#b71c1c','#6a1b9a','#00695c','#0d47a1','#1b5e20','#e65100','#880e4f','#3e2723','#263238'];
+
+    // Zona preferida de Bolt (1946).
+    // Base: 43 pts LabVIEW del usuario. Resolución aumentada a 120 pts con
+    // spline cúbico periódico (scipy s=0.002) — sin auto-intersecciones.
+    // Arco≈(1.15,1.41)  Tobillo≈(1.50,2.54)  Talón≈(1.82,2.22)
+    const BOLT_POLYGON = [
+        [1.2005,1.4055],[1.1843,1.4119],[1.1696,1.4259],[1.1575,1.4455],[1.1488,1.4684],
+        [1.1447,1.4926],[1.1461,1.5161],[1.1526,1.5384],[1.1629,1.5596],[1.1759,1.5803],
+        [1.1904,1.6005],[1.2053,1.6207],[1.2204,1.6409],[1.2353,1.6610],[1.2500,1.6813],
+        [1.2643,1.7017],[1.2779,1.7222],[1.2908,1.7429],[1.3027,1.7638],[1.3134,1.7850],
+        [1.3228,1.8065],[1.3307,1.8283],[1.3373,1.8504],[1.3426,1.8728],[1.3468,1.8955],
+        [1.3500,1.9184],[1.3523,1.9415],[1.3538,1.9648],[1.3546,1.9883],[1.3548,2.0119],
+        [1.3546,2.0356],[1.3540,2.0594],[1.3532,2.0832],[1.3523,2.1071],[1.3514,2.1311],
+        [1.3506,2.1550],[1.3501,2.1788],[1.3498,2.2027],[1.3501,2.2264],[1.3509,2.2500],
+        [1.3523,2.2735],[1.3546,2.2968],[1.3578,2.3200],[1.3620,2.3429],[1.3672,2.3655],
+        [1.3737,2.3877],[1.3814,2.4095],[1.3905,2.4308],[1.4011,2.4515],[1.4131,2.4716],
+        [1.4269,2.4911],[1.4423,2.5096],[1.4592,2.5257],[1.4773,2.5370],[1.4960,2.5408],
+        [1.5150,2.5357],[1.5339,2.5235],[1.5522,2.5071],[1.5694,2.4889],[1.5848,2.4699],
+        [1.5977,2.4494],[1.6073,2.4270],[1.6143,2.4032],[1.6208,2.3795],[1.6289,2.3575],
+        [1.6405,2.3387],[1.6572,2.3242],[1.6780,2.3133],[1.7015,2.3048],[1.7265,2.2977],
+        [1.7516,2.2909],[1.7755,2.2833],[1.7962,2.2738],[1.8100,2.2609],[1.8161,2.2445],
+        [1.8161,2.2254],[1.8118,2.2044],[1.8047,2.1823],[1.7965,2.1597],[1.7878,2.1372],
+        [1.7787,2.1146],[1.7693,2.0922],[1.7594,2.0699],[1.7490,2.0478],[1.7382,2.0259],
+        [1.7270,2.0043],[1.7153,1.9830],[1.7031,1.9621],[1.6905,1.9417],[1.6773,1.9218],
+        [1.6637,1.9023],[1.6495,1.8835],[1.6348,1.8653],[1.6196,1.8478],[1.6039,1.8311],
+        [1.5875,1.8152],[1.5696,1.8016],[1.5496,1.7910],[1.5290,1.7818],[1.5091,1.7718],
+        [1.4913,1.7594],[1.4756,1.7441],[1.4620,1.7260],[1.4500,1.7054],[1.4391,1.6834],
+        [1.4285,1.6613],[1.4175,1.6405],[1.4056,1.6214],[1.3929,1.6038],[1.3795,1.5871],
+        [1.3653,1.5708],[1.3505,1.5543],[1.3350,1.5371],[1.3191,1.5187],[1.3026,1.4986],
+        [1.2858,1.4768],[1.2687,1.4549],[1.2515,1.4348],[1.2343,1.4186],[1.2172,1.4081],
+    ];
+
+    // Ray-casting: punto dentro del polígono
+    function pointInPolygon(px, py, polygon) {
+        let inside = false;
+        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+            const xi = polygon[i][0], yi = polygon[i][1];
+            const xj = polygon[j][0], yj = polygon[j][1];
+            if (((yi > py) !== (yj > py)) && px < (xj - xi) * (py - yi) / (yj - yi) + xi)
+                inside = !inside;
+        }
+        return inside;
+    }
+
+    // Líneas rectas entre los puntos del polígono.
+    // Con 43 puntos del LabVIEW el Catmull-Rom crea bucles en la punta de los dedos
+    // (cambio de dirección brusco en U). Líneas rectas evitan ese problema.
+    function drawSmoothPolygon(ctx, polygon, mapX, mapY) {
+        ctx.beginPath();
+        ctx.moveTo(mapX(polygon[0][0]), mapY(polygon[0][1]));
+        for (let i = 1; i < polygon.length; i++) {
+            ctx.lineTo(mapX(polygon[i][0]), mapY(polygon[i][1]));
+        }
+        ctx.closePath();
+    }
+
+    // Convierte frecuencia a nota musical con octava y centésimas de semitono
+    function getNote(f) {
+        if (f <= 0) return "-";
+        const n    = 12 * Math.log2(f / 440);
+        const r    = Math.round(n);
+        const cents = Math.round((n - r) * 100);
+        const midi  = 69 + r;
+        // Protección para índice negativo en JS (% devuelve negativo para enteros negativos)
+        const noteName = NOTES[((midi % 12) + 12) % 12];
+        const octave   = Math.floor(midi / 12) - 1; // octava científica estándar: C4 = MIDI 60
+        return `${noteName}${octave} (${cents >= 0 ? '+' : ''}${cents}¢)`;
+    }
+
+    // Estado para redibujar al redimensionar ventana
+    let lastDraw = null;
+
+    function calculate() {
+        const lx = parseFloat(document.getElementById('lx').value);
+        const ly = parseFloat(document.getElementById('ly').value);
+        const lz = parseFloat(document.getElementById('lz').value);
+        const tr = parseFloat(document.getElementById('tr').value) || 0.5;
+        const c  = parseFloat(document.getElementById('c').value)  || 344;
+
+        if (!lx || !ly || !lz || lx <= 0 || ly <= 0 || lz <= 0) {
+            alert("Ingresa todas las dimensiones en metros (valores positivos)."); return;
+        }
+
+        // Advertencia acústica: dimensiones iguales generan degeneración masiva
+        const rounded = [lx, ly, lz].map(d => d.toFixed(2));
+        if (new Set(rounded).size < 3) {
+            alert("⚠️ Atención: dos o más dimensiones son iguales.\nEsto produce modos altamente degenerados (misma frecuencia, multiplicidad ≥ 2), lo que es acústicamente muy problemático.");
+        }
+
+        document.getElementById('output').style.display = 'block';
+
+        // Geometría
+        const vol = lx * ly * lz;
+        document.getElementById('vol').innerText    = vol.toFixed(2);
+        document.getElementById('floorA').innerText = (lx * ly).toFixed(2);
+        document.getElementById('totalA').innerText = (2 * (lx*ly + lx*lz + ly*lz)).toFixed(2);
+
+        // Frecuencia de Schroeder: fs = 2000·√(T60/V)  [Schroeder, 1996]
+        const fs = 2000 * Math.sqrt(tr / vol);
+        document.getElementById('fs').innerText = fs.toFixed(1);
+
+        // Calcular todos los modos hasta fMax
+        // Se toman índices hasta 20 por eje; el límite fMax garantiza no acumular
+        // modos irrelevantes muy por encima de la frecuencia de Schroeder.
+        const fMax = Math.max(400, fs * 1.5);
+        let allModes = [];
+        for (let k = 0; k <= 20; k++) {
+            for (let m = 0; m <= 20; m++) {
+                for (let n = 0; n <= 20; n++) {
+                    if (k === 0 && m === 0 && n === 0) continue;
+                    const f = (c / 2) * Math.sqrt((k/lx)**2 + (m/ly)**2 + (n/lz)**2);
+                    if (f > fMax) continue;
+                    const zeros = (k===0?1:0) + (m===0?1:0) + (n===0?1:0);
+                    const type  = zeros===2 ? "Axial" : (zeros===1 ? "Tangencial" : "Oblicuo");
+                    allModes.push({f, k, m, n, type});
+                }
+            }
+        }
+        allModes.sort((a, b) => a.f - b.f);
+
+        const top50 = allModes.slice(0, 50);
+
+        // Umbral de agrupamiento: ancho de banda modal a −3 dB = 2.2 / T60
+        // Dos modos separados por menos que este valor tienen resonancias que se solapan.
+        const threshold = 2.2 / tr;
+
+        // Agrupamiento por cadena: si dos modos consecutivos (ordenados) distan
+        // menos que el umbral, pertenecen al mismo grupo cromático.
+        const colorIdx = new Array(top50.length).fill(-1); // -1 = modo aislado
+        let clusterNum = 0;
+        // Agrupamiento por ancho máximo: cada modo se compara contra el PRIMERO
+        // del grupo actual, no contra el anterior. Así el grupo nunca supera
+        // el umbral en total (evita encadenamiento transitivo que agrupa modos
+        // separados por 10-20 Hz cuando el umbral es de 4-5 Hz).
+        let i = 0;
+        while (i < top50.length) {
+            let j = i + 1;
+            while (j < top50.length && (top50[j].f - top50[i].f) < threshold) j++;
+            if (j - i > 1) {
+                for (let q = i; q < j; q++) colorIdx[q] = clusterNum;
+                clusterNum++;
+            }
+            i = j;
+        }
+
+        // Leyenda de grupos
+        const infoDiv   = document.getElementById('clusterInfo');
+        const legendDiv = document.getElementById('clusterLegend');
+        legendDiv.innerHTML = '';
+        if (clusterNum > 0) {
+            infoDiv.innerHTML = `Umbral de agrupamiento: <b>${threshold.toFixed(1)} Hz</b> (ancho de banda modal = 2.2 / T₆₀). Modos del mismo color tienen resonancias que se solapan acústicamente.`;
+            for (let ci = 0; ci < clusterNum; ci++) {
+                const idxs  = colorIdx.reduce((acc, v, i2) => { if (v===ci) acc.push(i2); return acc; }, []);
+                const freqs = idxs.map(i2 => top50[i2].f.toFixed(1) + ' Hz').join(', ');
+                legendDiv.innerHTML += `<div class="legend-item">
+                    <span class="legend-swatch" style="background:${CLUSTER_BG[ci % CLUSTER_BG.length]}"></span>
+                    <span>Grupo ${ci+1}: ${freqs}</span>
+                </div>`;
+            }
+        } else {
+            infoDiv.innerHTML = `Umbral de agrupamiento: <b>${threshold.toFixed(1)} Hz</b>. No se detectaron modos en solapamiento en los primeros 50.`;
+        }
+
+        // Rellenar tabla
+        const tbody = document.querySelector('#modesTable tbody');
+        tbody.innerHTML = '';
+        top50.forEach((mod, idx) => {
+            const ci   = colorIdx[idx];
+            const bg   = ci >= 0 ? CLUSTER_BG[ci % CLUSTER_BG.length]   : '';
+            const fg   = ci >= 0 ? CLUSTER_TEXT[ci % CLUSTER_TEXT.length] : 'inherit';
+            const bold = ci >= 0 ? 'font-weight:bold;' : '';
+            const mark = ci >= 0 ? ' ●' : '';
+            tbody.innerHTML += `<tr style="background-color:${bg}; color:${fg}; ${bold}">
+                <td>${idx+1}</td>
+                <td>${mod.f.toFixed(2)}${mark}</td>
+                <td>${getNote(mod.f)}</td>
+                <td>${mod.k}, ${mod.m}, ${mod.n}</td>
+                <td>${mod.type}</td>
+            </tr>`;
+        });
+
+        // Para Bonello se usan todos los modos calculados (hasta fMax)
+        lastDraw = { lx, ly, lz, allModes };
+        drawBolt(lx, ly, lz);
+        drawBonello(allModes);
+    }
+
+    // ── BOLT ──────────────────────────────────────────────────────────────────
+    function drawBolt(lx, ly, lz) {
+        const canvas = document.getElementById('boltCanvas');
+        const ctx    = canvas.getContext('2d');
+
+        // ── Dimensiones del usuario ──────────────────────────────────────────
+        const dims = [lx, ly, lz].sort((a, b) => a - b);
+        const xVal = dims[1] / dims[0];  // W/H
+        const yVal = dims[2] / dims[0];  // L/H
+
+        // Ejes: X 1.0–2.0 (rango 1.0), Y 1.1–2.7 (rango 1.6)
+        // Canvas 200×283 px, padL=38 padR=10 padT=10 padB=30
+        // → plotW=152, plotH=243 → 152/1.0 = 152 px/unidad en X e Y ✓
+        const xMin = 1.0, xMax = 2.0;
+        const yMin = 1.1, yMax = 2.7;
+        const padL = 38, padR = 10, padT = 10, padB = 30;
+
+        const rect = canvas.parentElement.getBoundingClientRect();
+        canvas.width  = rect.width  * 2;
+        canvas.height = rect.height * 2;
+        ctx.scale(2, 2);
+        ctx.clearRect(0, 0, rect.width, rect.height);
+
+        const w = rect.width, h = rect.height;
+        const plotW = w - padL - padR;
+        const plotH = h - padT - padB;
+
+        const mapX = v => padL + (v - xMin) / (xMax - xMin) * plotW;
+        const mapY = v => (h - padB) - (v - yMin) / (yMax - yMin) * plotH;
+
+        // ── Cuadrícula cada 0.2 ──────────────────────────────────────────────
+        ctx.strokeStyle = '#e8e8e8'; ctx.lineWidth = 0.7;
+        for (let gx = xMin; gx <= xMax + 0.005; gx += 0.1) {
+            ctx.beginPath(); ctx.moveTo(mapX(gx), padT); ctx.lineTo(mapX(gx), h - padB); ctx.stroke();
+        }
+        for (let gy = yMin; gy <= yMax + 0.005; gy += 0.1) {
+            ctx.beginPath(); ctx.moveTo(padL, mapY(gy)); ctx.lineTo(w - padR, mapY(gy)); ctx.stroke();
+        }
+
+        // ── Diagonal L=W (región válida: L ≥ W) ─────────────────────────────
+        ctx.strokeStyle = '#bbb'; ctx.lineWidth = 0.8; ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(mapX(Math.max(xMin, yMin)), mapY(Math.max(xMin, yMin)));
+        ctx.lineTo(mapX(Math.min(xMax, yMax)), mapY(Math.min(xMax, yMax)));
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // ── Ejes principales ─────────────────────────────────────────────────
+        ctx.strokeStyle = '#777'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(padL, h - padB); ctx.lineTo(w - padR, h - padB); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(padL, h - padB); ctx.lineTo(padL, padT); ctx.stroke();
+
+        // ── Ticks y etiquetas cada 0.2 ───────────────────────────────────────
+        ctx.fillStyle = '#666'; ctx.font = '8px Arial'; ctx.textAlign = 'center';
+        for (let gx = xMin; gx <= xMax + 0.005; gx += 0.2)
+            ctx.fillText(gx.toFixed(1), mapX(gx), h - padB + 11);
+        ctx.textAlign = 'right';
+        for (let gy = yMin; gy <= yMax + 0.005; gy += 0.2)
+            ctx.fillText(gy.toFixed(1), padL - 2, mapY(gy) + 3);
+
+        // ── Títulos de ejes ──────────────────────────────────────────────────
+        ctx.fillStyle = '#444'; ctx.font = 'bold 9px Arial'; ctx.textAlign = 'center';
+        ctx.fillText('W/H', padL + plotW / 2, h - padB + 22);
+        ctx.save();
+        ctx.translate(8, padT + plotH / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText('L/H', 0, 0);
+        ctx.restore();
+
+        // ── Ameba de Bolt (200 puntos scipy, ejes exactos del libro) ─────────
+        ctx.strokeStyle = '#00aded'; ctx.lineWidth = 2;
+        ctx.fillStyle   = 'rgba(0, 173, 237, 0.15)';
+        drawSmoothPolygon(ctx, BOLT_POLYGON, mapX, mapY);
+        ctx.fill(); ctx.stroke();
+
+        // ── Etiqueta interior ────────────────────────────────────────────────
+        ctx.fillStyle = 'rgba(0, 110, 170, 0.6)'; ctx.font = 'italic 8px Arial'; ctx.textAlign = 'center';
+        ctx.fillText('Bolt 1946', mapX(1.44), mapY(1.90));
+
+        // ── Marcador del punto del usuario ───────────────────────────────────
+        const inPoly  = pointInPolygon(xVal, yVal, BOLT_POLYGON);
+        const color   = inPoly ? '#2e7d32' : '#c62828';
+        const coordStr = `(${xVal.toFixed(2)}, ${yVal.toFixed(2)})`;
+        const outOfRange = xVal < xMin || xVal > xMax || yVal < yMin || yVal > yMax;
+
+        const vDiv = document.getElementById('boltVerdict');
+        vDiv.className = `verdict ${inPoly ? 'pass' : 'fail'}`;
+
+        if (outOfRange) {
+            // Calcular intersección del segmento (centro→punto) con el borde del plot
+            const cx = padL + plotW/2, cy = padT + plotH/2; // centro del plot en px
+            const tx = mapX(Math.max(xMin, Math.min(xMax, xVal)));
+            const ty = mapY(Math.max(yMin, Math.min(yMax, yVal)));
+            // Dirección desde el centro hacia el punto (clampeado al borde)
+            const dx = tx - cx, dy = ty - cy;
+            const len = Math.sqrt(dx*dx + dy*dy) || 1;
+            const ux = dx/len, uy = dy/len;
+            // Retroceder desde el borde para colocar la flecha
+            const arrowX = tx - ux*4, arrowY = ty - uy*4;
+            // Dibujar flecha apuntando hacia afuera
+            const ang = Math.atan2(uy, ux);
+            ctx.save();
+            ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1.5;
+            // Línea de la flecha
+            ctx.beginPath();
+            ctx.moveTo(arrowX - ux*10, arrowY - uy*10);
+            ctx.lineTo(arrowX, arrowY);
+            ctx.stroke();
+            // Punta de flecha
+            ctx.beginPath();
+            ctx.moveTo(arrowX, arrowY);
+            ctx.lineTo(arrowX - Math.cos(ang-0.4)*7, arrowY - Math.sin(ang-0.4)*7);
+            ctx.lineTo(arrowX - Math.cos(ang+0.4)*7, arrowY - Math.sin(ang+0.4)*7);
+            ctx.closePath(); ctx.fill();
+            // Etiqueta de coordenadas junto a la flecha
+            ctx.font = 'bold 8px Arial';
+            const lx = arrowX - ux*14, ly = arrowY - uy*14;
+            ctx.textAlign = ux > 0 ? 'right' : (ux < -0.1 ? 'left' : 'center');
+            ctx.fillText(coordStr, lx, ly - (uy < 0 ? 8 : -8));
+            ctx.restore();
+            vDiv.innerText = `NO CUMPLE: Proporciones ${coordStr} fuera de la zona de Bolt (punto fuera del rango del gráfico).`;
+        } else {
+            const px = mapX(xVal), py = mapY(yVal);
+            ctx.fillStyle = color; ctx.strokeStyle = 'white'; ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(px, py - 9); ctx.lineTo(px + 9, py);
+            ctx.lineTo(px, py + 9); ctx.lineTo(px - 9, py);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+            const labelX = (px + 75 < w - padR) ? px + 12 : px - 12;
+            ctx.fillStyle = color; ctx.font = 'bold 10px Arial';
+            ctx.textAlign = (px + 75 < w - padR) ? 'left' : 'right';
+            ctx.fillText(coordStr, labelX, py + 4);
+            vDiv.innerText = inPoly
+                ? `CUMPLE: Proporciones ${coordStr} dentro de la zona preferida de Bolt (1946).`
+                : `NO CUMPLE: Proporciones ${coordStr} fuera de la zona preferida de Bolt (1946).`;
+        }
+    }
+
+    // ── BONELLO ───────────────────────────────────────────────────────────────
+    function drawBonello(modes) {
+        const canvas = document.getElementById('bonelloCanvas');
+        const ctx    = canvas.getContext('2d');
+        const rect   = canvas.parentElement.getBoundingClientRect();
+        canvas.width  = rect.width  * 2;
+        canvas.height = rect.height * 2;
+        ctx.scale(2, 2);
+        ctx.clearRect(0, 0, rect.width, rect.height);
+
+        const w = rect.width, h = rect.height;
+        const padL = 44, padR = 12, padT = 22, padB = 48;
+        const plotW = w - padL - padR;
+        const plotH = h - padT - padB;
+
+        // Bandas de tercio de octava estándar (Hz)
+        const bands = [16, 20, 25, 31.5, 40, 50, 63, 80, 100, 125, 160, 200, 250];
+        const counts = new Array(bands.length).fill(0);
+
+        // Cada modo se asigna a la banda cuyo centro f_c satisface: f_c/2^(1/6) ≤ f < f_c·2^(1/6)
+        modes.forEach(mod => {
+            for (let i = 0; i < bands.length; i++) {
+                const low  = bands[i] / Math.pow(2, 1/6);
+                const high = bands[i] * Math.pow(2, 1/6);
+                if (mod.f >= low && mod.f < high) { counts[i]++; break; }
+            }
+        });
+
+        // Ejes
+        ctx.strokeStyle = '#999'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(padL, h - padB); ctx.lineTo(w - padR, h - padB); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(padL, h - padB); ctx.lineTo(padL, padT); ctx.stroke();
+
+        const maxCount = Math.max(...counts, 5);
+        const barW     = plotW / bands.length;
+
+        // Cuadrícula horizontal
+        ctx.strokeStyle = '#eeeeee'; ctx.lineWidth = 0.7;
+        const step = Math.max(1, Math.ceil(maxCount / 6));
+        for (let y = step; y <= maxCount; y += step) {
+            const yy = (h - padB) - (y / maxCount) * plotH;
+            ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(w - padR, yy); ctx.stroke();
+        }
+
+        // Criterio de Bonello: la densidad modal debe ser monótonamente NO DECRECIENTE
+        // a partir de la primera banda con modos. Bandas vacías previas a la primera
+        // con modos no constituyen violación.
+        let isMono = true;
+        let firstNonZero = -1;
+
+        counts.forEach((count, i) => {
+            if (count > 0 && firstNonZero < 0) firstNonZero = i;
+            const isDown = (firstNonZero >= 0 && i > firstNonZero && counts[i-1] > 0 && count < counts[i-1]);
+            if (isDown) isMono = false;
+
+            const bh = (count / maxCount) * plotH;
+            const x  = padL + i * barW;
+            const y  = (h - padB) - bh;
+
+            ctx.fillStyle = isDown ? '#c62828' : '#00aded';
+            if (bh > 0) ctx.fillRect(x + 2, y, barW - 4, bh);
+
+            // Número sobre la barra
+            if (count > 0) {
+                ctx.fillStyle = '#333'; ctx.font = '9px Arial'; ctx.textAlign = 'center';
+                ctx.fillText(count, x + barW / 2, y - 3);
+            }
+
+            // Etiqueta de frecuencia
+            ctx.fillStyle = '#555'; ctx.font = '9px Arial'; ctx.textAlign = 'center';
+            ctx.fillText(bands[i], x + barW / 2, h - padB + 14);
+        });
+
+        // Ticks del eje Y
+        ctx.fillStyle = '#666'; ctx.font = '9px Arial'; ctx.textAlign = 'right';
+        for (let y = 0; y <= maxCount; y += step) {
+            const yy = (h - padB) - (y / maxCount) * plotH;
+            ctx.fillText(y, padL - 4, yy + 3);
+        }
+
+        // Título eje X
+        ctx.fillStyle = '#444'; ctx.font = 'bold 10px Arial'; ctx.textAlign = 'center';
+        ctx.fillText('Frecuencia central de banda (Hz)', padL + plotW / 2, h - padB + 30);
+
+        // Título eje Y
+        ctx.save();
+        ctx.translate(11, padT + plotH / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText('N° de modos', 0, 0);
+        ctx.restore();
+
+        const vDiv = document.getElementById('bonelloVerdict');
+        vDiv.className = `verdict ${isMono ? 'pass' : 'fail'}`;
+        vDiv.innerText = isMono
+            ? "CUMPLE: Densidad modal monótonamente no decreciente (criterio de Bonello, 1981)."
+            : "NO CUMPLE: Descenso en densidad modal. Las barras en rojo indican las bandas problemáticas.";
+    }
+
+    // ── REDIMENSIONADO ────────────────────────────────────────────────────────
+    // Al cambiar el tamaño de la ventana, los canvas se redibujan con las
+    // dimensiones correctas sin necesidad de volver a calcular.
+    const resizeObserver = new ResizeObserver(() => {
+        if (!lastDraw) return;
+        drawBolt(lastDraw.lx, lastDraw.ly, lastDraw.lz);
+        drawBonello(lastDraw.allModes);
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+        // Bolt tiene tamaño fijo — no necesita observar redimensionado.
+        // Solo Bonello (canvas responsive) se observa.
+        resizeObserver.observe(document.getElementById('bonelloCanvas').parentElement);
+    });
+</script>
+
+</body>
+</html>
