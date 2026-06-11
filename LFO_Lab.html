@@ -218,10 +218,10 @@
 
             <!-- Zoom eje X del osciloscopio LFO -->
             <div class="ctrl">
-                <div class="ctrl-lbl">Zoom eje X (panel LFO) <span class="ctrl-val" id="val-lfowin">1.0 s</span></div>
-                <input type="range" id="lfoWinSlider" min="0.1" max="5" value="1" step="0.1"
+                <div class="ctrl-lbl">Zoom eje X (osciloscopio) <span class="ctrl-val" id="val-lfowin">1.0 s</span></div>
+                <input type="range" id="lfoWinSlider" min="0.005" max="5" value="1" step="0.005"
                        oninput="setLfoWindow(this.value)">
-                <div class="ctrl-hint">Cuántos segundos muestra el panel verde — sube para ver ciclos lentos, baja para ciclos rápidos</div>
+                <div class="ctrl-hint">⬅ Acercar (ciclos rápidos / síntesis FM) · Alejar (ver LFO lento) ➡</div>
             </div>
 
             <!-- Depth del LFO -->
@@ -305,7 +305,30 @@ const S = {
 
 function setLfoWindow(val) {
     S.lfoWindow = parseFloat(val);
-    document.getElementById('val-lfowin').textContent = parseFloat(val).toFixed(1) + ' s';
+    const v = parseFloat(val);
+    // Mostrar unidad apropiada
+    const label = v < 0.1 ? (v*1000).toFixed(0)+' ms' : v.toFixed(v<1?2:1)+' s';
+    document.getElementById('val-lfowin').textContent = label;
+}
+
+function autoZoom() {
+    // Sugiere el zoom correcto según Rate y modo actual
+    // Objetivo: mostrar ~3 ciclos del LFO (o ~5 ciclos del carrier en síntesis)
+    let tw;
+    if (S.rate >= 100) {
+        // Síntesis FM/audio: mostrar ~5 ciclos del carrier
+        tw = Math.max(5/S.fc, 0.005);
+    } else if (S.rate >= 15) {
+        // LFO rápido: ~3 ciclos del LFO
+        tw = 3/S.rate;
+    } else {
+        // LFO lento/normal: ~2 ciclos del LFO, max 3s
+        tw = Math.min(2/S.rate, 3.0);
+    }
+    tw = Math.round(tw * 200) / 200; // redondear a 0.005s
+    tw = Math.max(0.005, Math.min(5.0, tw));
+    document.getElementById('lfoWinSlider').value = tw;
+    setLfoWindow(tw);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -504,45 +527,47 @@ function drawOsc(t0) {
     ctxO.clearRect(0,0,w,h); drawGrid(ctxO,w,h,6,10);
     const pH=h/3-4, gap=6;
 
-    // ── PANEL LFO: ventana fija controlada por slider ──────────────────
-    // La frecuencia del LFO se percibe como DENSIDAD DE CICLOS en la ventana.
-    // Rate bajo = pocos ciclos; Rate alto = muchos ciclos comprimidos.
-    const twLFO = S.lfoWindow;
-    const ppsLFO = w / twLFO;
+    // ── UNA SOLA VENTANA DE TIEMPO para los tres paneles ──────────────
+    // Igual que un osciloscopio real: el slider controla s/div.
+    // Al subir Rate con ventana fija → más ciclos visibles → la frecuencia SE VE.
+    // Al bajar Rate → menos ciclos → onda más lenta y amplia.
+    // Para AM/tremolo lento: el carrier aparece como textura con envolvente
+    // del LFO → es PEDAGÓGICAMENTE CORRECTO (muestra el efecto de modulación).
+    const tw = S.lfoWindow;   // segundos visibles, controlado por el slider
+    const pps = w / tw;
 
+    // ── Panel 1: LFO ───────────────────────────────────────────────────
     const LFO_REF_BASE = (S.mod==='am'||S.mod==='ring') ? 2.0 : 0.5;
-    const LFO_REF = Math.max(LFO_REF_BASE, S.depth);
-    plotWave(ctxO,'#00e676', t=>{
-        return S.depth * lfoWave(2*Math.PI*S.rate*t);
-    }, 0, pH, LFO_REF, t0, ppsLFO, w);
+    const LFO_REF = Math.max(LFO_REF_BASE, S.depth); // crece con depth, sin overflow
 
-    // Línea punteada en ±referencia base
+    plotWave(ctxO,'#00e676', t => S.depth * lfoWave(2*Math.PI*S.rate*t),
+             0, pH, LFO_REF, t0, pps, w);
+
+    // Línea de referencia base (±LFO_REF_BASE)
     ctxO.save();
-    ctxO.strokeStyle='rgba(0,230,118,0.28)'; ctxO.lineWidth=0.8; ctxO.setLineDash([4,4]);
-    const baseY=(LFO_REF_BASE/LFO_REF)*(pH/2-4);
-    ctxO.beginPath(); ctxO.moveTo(0,pH/2-baseY); ctxO.lineTo(w,pH/2-baseY); ctxO.stroke();
-    ctxO.beginPath(); ctxO.moveTo(0,pH/2+baseY); ctxO.lineTo(w,pH/2+baseY); ctxO.stroke();
+    ctxO.strokeStyle='rgba(0,230,118,0.25)'; ctxO.lineWidth=0.7; ctxO.setLineDash([4,4]);
+    const refY=(LFO_REF_BASE/LFO_REF)*(pH/2-4);
+    ctxO.beginPath(); ctxO.moveTo(0,pH/2-refY); ctxO.lineTo(w,pH/2-refY); ctxO.stroke();
+    ctxO.beginPath(); ctxO.moveTo(0,pH/2+refY); ctxO.lineTo(w,pH/2+refY); ctxO.stroke();
     ctxO.setLineDash([]);
-    ctxO.fillStyle='rgba(0,230,118,0.35)'; ctxO.font='8px monospace';
-    ctxO.fillText((S.lfoWindow.toFixed(1))+'s', 4, 10);
+    // Etiqueta de ventana temporal
+    ctxO.fillStyle='rgba(0,230,118,0.40)'; ctxO.font='8px monospace';
+    ctxO.fillText(tw.toFixed(2)+'s / div', w-68, h/3-6);
     ctxO.restore();
 
-    // ── PANELES Fc Y RESULTADO: siempre muestran 3 ciclos de la portadora ──
-    // Con ventana propia, Fc siempre se ve como una onda limpia
-    // independientemente del Rate del LFO.
-    const twCarrier = Math.max(3/S.fc, 0.001);
-    const ppsCarrier = w / twCarrier;
+    // ── Panel 2: Portadora ─────────────────────────────────────────────
+    plotWave(ctxO,'#6e7a8a', t => Math.sin(2*Math.PI*S.fc*t),
+             pH+gap, pH, 1.0, t0, pps, w);
 
-    plotWave(ctxO,'#6e7a8a', t=>Math.sin(2*Math.PI*S.fc*t),
-             pH+gap, pH, 1.0, t0, ppsCarrier, w);
+    // ── Panel 3: Resultado modulado ────────────────────────────────────
+    const rAmp = S.mod==='am' ? Math.max(1+S.depth, 1.05) : 1.05;
+    plotWave(ctxO,'#7c4dff', resultSignal, (pH+gap)*2, pH, rAmp, t0, pps, w);
 
-    const rAmp = S.mod==='am' ? Math.max(1+S.depth,1.05) : 1.05;
-    plotWave(ctxO,'#7c4dff', resultSignal,
-             (pH+gap)*2, pH, rAmp, t0, ppsCarrier, w);
-
-    // Etiquetas
+    // Etiquetas de panel
     const lbl=(color,text,y)=>{ctxO.fillStyle=color;ctxO.font='9px monospace';ctxO.fillText(text,4,y);};
-    lbl('#00e676','LFO',11); lbl('#6e7a8a','Fc',pH+gap+11); lbl('#7c4dff','y(t)',(pH+gap)*2+11);
+    lbl('#00e676','LFO',11);
+    lbl('#6e7a8a','Fc',pH+gap+11);
+    lbl('#7c4dff','y(t)',(pH+gap)*2+11);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -721,7 +746,7 @@ function setMod(m) {
     document.getElementById('rate').value=d.rate;
     document.getElementById('depth').value=d.depth;
     if(S.isPlaying) buildGraph();
-    updateUI();
+    updateUI(); autoZoom();
 }
 
 function setShape(sh) {
@@ -739,7 +764,7 @@ function applyPreset(p) {
     document.getElementById('rate').value=p.rate;
     document.getElementById('depth').value=p.depth;
     if(S.isPlaying) buildGraph();
-    updateUI();
+    updateUI(); autoZoom();
 }
 
 function togglePlay() {
@@ -751,7 +776,9 @@ function togglePlay() {
 }
 
 // Eventos sliders
-['fc','rate','depth'].forEach(id=>document.getElementById(id).addEventListener('input',updateUI));
+['fc','depth'].forEach(id=>document.getElementById(id).addEventListener('input',updateUI));
+// Al cambiar Rate, también recalcular el zoom sugerido
+document.getElementById('rate').addEventListener('input',()=>{ updateUI(); autoZoom(); });
 
 // ═══════════════════════════════════════════════════════════════════
 //  INIT — PRESETS Y UI INICIAL
@@ -763,7 +790,7 @@ PRESETS.forEach(p=>{
     btn.onclick=()=>applyPreset(p);
     pg.appendChild(btn);
 });
-updateUI();
+updateUI(); autoZoom();
 </script>
 </body>
 </html>
