@@ -135,9 +135,14 @@
                         <option value="house_general">Casa / Departamento General</option>
                         <option value="apartment">Departamento / Apartamento</option>
                     </optgroup>
-                    <optgroup label="RECINTOS CRÍTICOS">
-                        <option value="studio">Estudio de Grabación / Sala de Conciertos</option>
+                    <optgroup label="RECINTOS CRÍTICOS — AUDIO / BROADCAST">
+                        <option value="studio">Estudio de Grabación profesional</option>
+                        <option value="concert_hall">Sala de Conciertos / Recital</option>
+                        <option value="radio_booth">Cabina de Locución de Radio / Podcast</option>
+                        <option value="tv_studio">Set de Televisión / Broadcast</option>
+                        <option value="rehearsal">Sala de Ensayo Musical</option>
                         <option value="cinema">Cine / Home Theater / Auditorio</option>
+                        <option value="control_room">Control Room (Sala de Mezcla)</option>
                     </optgroup>
                     <optgroup label="TRABAJO / ESTUDIO">
                         <option value="conference">Sala de Conferencias / Aula Universitaria</option>
@@ -289,11 +294,21 @@
         };
 
         const roomRecommendations = {
+            // Referencias: ANSI S12.2, ISO 3382, ASHRAE, BBC EBU R68, AES, IEC 60268-16
             'bedroom': { 'NC': 25, 'NR': 25, 'PNC': 25, 'RC': 25, 'NCB': 25, 'DIN': 30 },
             'living_room': { 'NC': 30, 'NR': 30, 'PNC': 30, 'RC': 30, 'NCB': 30, 'DIN': 35 },
             'house_general': { 'NC': 30, 'NR': 30, 'PNC': 30, 'RC': 30, 'NCB': 30, 'DIN': 35 },
             'apartment': { 'NC': 30, 'NR': 30, 'PNC': 30, 'RC': 30, 'NCB': 30, 'DIN': 35 },
-            'studio': { 'NC': 15, 'NR': 15, 'PNC': 15, 'RC': 20, 'NCB': 15, 'DIN': 20 },
+            'studio':       { 'NC': 15, 'NR': 15, 'PNC': 15, 'RC': 20, 'NCB': 15, 'DIN': 20 },
+            'concert_hall': { 'NC': 20, 'NR': 20, 'PNC': 20, 'RC': 20, 'NCB': 20, 'DIN': 25 },
+            // Cabina locución: silencio máximo para captación de voz (BBC/EBU R68 ≤ NR-20)
+            'radio_booth':  { 'NC': 20, 'NR': 20, 'PNC': 15, 'RC': 20, 'NCB': 20, 'DIN': 20 },
+            // Set TV: similar a estudio de grabación (EBU R68, SMPTE ST 202)
+            'tv_studio':    { 'NC': 25, 'NR': 25, 'PNC': 25, 'RC': 25, 'NCB': 25, 'DIN': 30 },
+            // Sala ensayo: tolera más ruido que estudio de grabación (ASA S12.2)
+            'rehearsal':    { 'NC': 35, 'NR': 35, 'PNC': 35, 'RC': 35, 'NCB': 35, 'DIN': 40 },
+            // Control room: crítico para escucha de referencia (AES, SMPTE)
+            'control_room': { 'NC': 20, 'NR': 20, 'PNC': 20, 'RC': 20, 'NCB': 20, 'DIN': 25 },
             'cinema': { 'NC': 25, 'NR': 25, 'PNC': 25, 'RC': 25, 'NCB': 25, 'DIN': 30 },
             'conference': { 'NC': 30, 'NR': 30, 'PNC': 30, 'RC': 30, 'NCB': 30, 'DIN': 35 },
             'library': { 'NC': 30, 'NR': 30, 'PNC': 30, 'RC': 30, 'NCB': 30, 'DIN': 35 },

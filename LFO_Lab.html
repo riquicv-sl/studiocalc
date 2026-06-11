@@ -324,8 +324,8 @@ const WHAT = {
     },
     pm: {
         title:'🌀 CHORUS / FASE — el LFO controla la FASE',
-        body:'El LFO desplaza la fase de la señal continuamente. Perceptualmente es similar al vibrato pero con un carácter más espacial y menos "melódico". Este principio está en el corazón del <strong>Chorus</strong> y el <strong>Flanger</strong>: varias copias con fase desplazada crean sensación de amplitud.<br><br>Con Rate lento y Depth moderada escucharás un efecto espacial sutil.',
-        synth:'En SynthEdit: existen módulos de Phase Modulator. En efectos reales el chorus mezcla la señal original con versiones PM ligeramente moduladas para dar profundidad.'
+        body:'El LFO desplaza la fase de la señal continuamente. <strong>⚠️ Nota importante:</strong> en este simulador el efecto de fase se implementa modulando el parámetro de afinación (detune), que en la práctica es una forma de FM — por eso suena parecido al vibrato. La PM verdadera requeriría un All-Pass filter cuya frecuencia sea barrida por el LFO.<br><br>El <strong>Chorus real</strong> funciona así: mezcla la señal original con una o varias copias ligeramente retrasadas (delay corto modulado), no solo con cambio de fase. Prueba bajar mucho la frecuencia Fc (ej. 80 Hz) y usar Rate muy lento (0.5–1 Hz) con Depth baja para apreciar mejor el efecto.',
+        synth:'En SynthEdit: el Chorus real se construye con un Delay de tiempo variable (modulado por LFO) + mezcla wet/dry. El AllPass Filter modulado da el efecto de Phaser. Ambos son formas de modulación de fase/tiempo.'
     },
     ring: {
         title:'🔔 RING MOD — multiplicación pura, sonidos nuevos',
@@ -489,30 +489,29 @@ function drawOsc(t0) {
     const h=oscCanvas.height/(window.devicePixelRatio||1);
     ctxO.clearRect(0,0,w,h); drawGrid(ctxO,w,h,6,10);
     const pH=h/3-4, gap=6;
-    // Ventana temporal: 3 ciclos del LFO (mínimo 2 ciclos de Fc)
-    const twLFO = Math.max(3/S.rate, 2/S.fc, 0.01);
-    const tw = Math.min(twLFO, 0.2);
+
+    // FIX 1 — Ventana temporal adaptativa: siempre muestra ~3 ciclos completos del LFO.
+    // Antes el cap de 0.2s hacía que al subir el Rate no se vieran más ciclos visualmente.
+    // Ahora: tw = 3/rate sin cap fijo → el LFO siempre llena el panel con ~3 ciclos.
+    const tw = Math.max(3/S.rate, 4/S.fc, 0.002);
     const pps = w/tw;
 
-    // LFO — referencia FIJA por modo para que la amplitud visual cambie con Depth.
-    // Bug anterior: amp=S.depth cancelaba la escala → la onda siempre se veía igual.
-    // Referencia adaptada al rango útil de cada modo:
-    //   AM/Ring: max 200% (permite ver sobremodulación)
-    //   FM/PM:   max  50% (el vibrato útil está en 5–25%; con 50% de ref se ve bien)
-    const LFO_REF = (S.mod==='am'||S.mod==='ring') ? 2.0 : 0.5;
+    // FIX 2 — Referencia fija por modo + clamp para evitar overflow entre paneles.
+    // La amplitud de referencia nunca es menor que la señal, así el LFO nunca
+    // sale de su panel aunque depth sea muy alto.
+    const LFO_REF_BASE = (S.mod==='am'||S.mod==='ring') ? 2.0 : 0.5;
+    const LFO_REF = Math.max(LFO_REF_BASE, S.depth); // crece con depth, nunca provoca overflow
     plotWave(ctxO,'#00e676', t=>{
         return S.depth * lfoWave(2*Math.PI*S.rate*t);
     }, 0, pH, LFO_REF, t0, pps, w);
 
-    // Línea punteada mostrando la referencia máxima del modo
+    // Línea punteada mostrando la referencia base del modo
     ctxO.save();
     ctxO.strokeStyle='rgba(0,230,118,0.28)'; ctxO.lineWidth=0.8; ctxO.setLineDash([4,4]);
-    // Línea al 100% del rango útil del modo (LFO_REF)
-    const refLine = (LFO_REF/LFO_REF)*(pH/2-4); // = pH/2-4 (borde del panel)
-    ctxO.beginPath(); ctxO.moveTo(0,pH/2-(pH/2-4)); ctxO.lineTo(w,pH/2-(pH/2-4)); ctxO.stroke();
-    ctxO.beginPath(); ctxO.moveTo(0,pH/2+(pH/2-4)); ctxO.lineTo(w,pH/2+(pH/2-4)); ctxO.stroke();
+    const baseY = (LFO_REF_BASE/LFO_REF)*(pH/2-4);
+    ctxO.beginPath(); ctxO.moveTo(0,pH/2-baseY); ctxO.lineTo(w,pH/2-baseY); ctxO.stroke();
+    ctxO.beginPath(); ctxO.moveTo(0,pH/2+baseY); ctxO.lineTo(w,pH/2+baseY); ctxO.stroke();
     ctxO.setLineDash([]);
-    // Etiqueta del máximo
     const refLabel = S.mod==='am'||S.mod==='ring' ? '200%' : '50%';
     ctxO.fillStyle='rgba(0,230,118,0.35)'; ctxO.font='8px monospace';
     ctxO.fillText('± '+refLabel, w-36, 10);
