@@ -216,6 +216,14 @@
                 <div class="ctrl-hint">0.1–5 Hz: tremolo/vibrato lento · 5–15 Hz: rápido · >20 Hz: síntesis</div>
             </div>
 
+            <!-- Zoom eje X del osciloscopio LFO -->
+            <div class="ctrl">
+                <div class="ctrl-lbl">Zoom eje X (panel LFO) <span class="ctrl-val" id="val-lfowin">1.0 s</span></div>
+                <input type="range" id="lfoWinSlider" min="0.1" max="5" value="1" step="0.1"
+                       oninput="setLfoWindow(this.value)">
+                <div class="ctrl-hint">Cuántos segundos muestra el panel verde — sube para ver ciclos lentos, baja para ciclos rápidos</div>
+            </div>
+
             <!-- Depth del LFO -->
             <div class="ctrl">
                 <div class="ctrl-lbl" id="depthLabel">Profundidad del LFO (Depth) <span class="ctrl-val" id="val-depth">50%</span></div>
@@ -291,8 +299,14 @@
 // ═══════════════════════════════════════════════════════════════════
 const S = {
     mod:'am', shape:'sine', fc:440, rate:4, depth:0.5,
-    isPlaying:false, tOff:0, lastFrame:0
+    isPlaying:false, tOff:0, lastFrame:0,
+    lfoWindow: 1.0  // segundos que muestra el panel LFO (controlado por slider)
 };
+
+function setLfoWindow(val) {
+    S.lfoWindow = parseFloat(val);
+    document.getElementById('val-lfowin').textContent = parseFloat(val).toFixed(1) + ' s';
+}
 
 // ═══════════════════════════════════════════════════════════════════
 //  PRESETS
@@ -490,39 +504,41 @@ function drawOsc(t0) {
     ctxO.clearRect(0,0,w,h); drawGrid(ctxO,w,h,6,10);
     const pH=h/3-4, gap=6;
 
-    // FIX 1 — Ventana temporal adaptativa: siempre muestra ~3 ciclos completos del LFO.
-    // Antes el cap de 0.2s hacía que al subir el Rate no se vieran más ciclos visualmente.
-    // Ahora: tw = 3/rate sin cap fijo → el LFO siempre llena el panel con ~3 ciclos.
-    const tw = Math.max(3/S.rate, 4/S.fc, 0.002);
-    const pps = w/tw;
+    // ── PANEL LFO: ventana fija controlada por slider ──────────────────
+    // La frecuencia del LFO se percibe como DENSIDAD DE CICLOS en la ventana.
+    // Rate bajo = pocos ciclos; Rate alto = muchos ciclos comprimidos.
+    const twLFO = S.lfoWindow;
+    const ppsLFO = w / twLFO;
 
-    // FIX 2 — Referencia fija por modo + clamp para evitar overflow entre paneles.
-    // La amplitud de referencia nunca es menor que la señal, así el LFO nunca
-    // sale de su panel aunque depth sea muy alto.
     const LFO_REF_BASE = (S.mod==='am'||S.mod==='ring') ? 2.0 : 0.5;
-    const LFO_REF = Math.max(LFO_REF_BASE, S.depth); // crece con depth, nunca provoca overflow
+    const LFO_REF = Math.max(LFO_REF_BASE, S.depth);
     plotWave(ctxO,'#00e676', t=>{
         return S.depth * lfoWave(2*Math.PI*S.rate*t);
-    }, 0, pH, LFO_REF, t0, pps, w);
+    }, 0, pH, LFO_REF, t0, ppsLFO, w);
 
-    // Línea punteada mostrando la referencia base del modo
+    // Línea punteada en ±referencia base
     ctxO.save();
     ctxO.strokeStyle='rgba(0,230,118,0.28)'; ctxO.lineWidth=0.8; ctxO.setLineDash([4,4]);
-    const baseY = (LFO_REF_BASE/LFO_REF)*(pH/2-4);
+    const baseY=(LFO_REF_BASE/LFO_REF)*(pH/2-4);
     ctxO.beginPath(); ctxO.moveTo(0,pH/2-baseY); ctxO.lineTo(w,pH/2-baseY); ctxO.stroke();
     ctxO.beginPath(); ctxO.moveTo(0,pH/2+baseY); ctxO.lineTo(w,pH/2+baseY); ctxO.stroke();
     ctxO.setLineDash([]);
-    const refLabel = S.mod==='am'||S.mod==='ring' ? '200%' : '50%';
     ctxO.fillStyle='rgba(0,230,118,0.35)'; ctxO.font='8px monospace';
-    ctxO.fillText('± '+refLabel, w-36, 10);
+    ctxO.fillText((S.lfoWindow.toFixed(1))+'s', 4, 10);
     ctxO.restore();
 
-    // Señal portadora
-    plotWave(ctxO,'#6e7a8a', t=>Math.sin(2*Math.PI*S.fc*t), pH+gap, pH, 1.0, t0, pps, w);
+    // ── PANELES Fc Y RESULTADO: siempre muestran 3 ciclos de la portadora ──
+    // Con ventana propia, Fc siempre se ve como una onda limpia
+    // independientemente del Rate del LFO.
+    const twCarrier = Math.max(3/S.fc, 0.001);
+    const ppsCarrier = w / twCarrier;
 
-    // Resultado
+    plotWave(ctxO,'#6e7a8a', t=>Math.sin(2*Math.PI*S.fc*t),
+             pH+gap, pH, 1.0, t0, ppsCarrier, w);
+
     const rAmp = S.mod==='am' ? Math.max(1+S.depth,1.05) : 1.05;
-    plotWave(ctxO,'#7c4dff', resultSignal, (pH+gap)*2, pH, rAmp, t0, pps, w);
+    plotWave(ctxO,'#7c4dff', resultSignal,
+             (pH+gap)*2, pH, rAmp, t0, ppsCarrier, w);
 
     // Etiquetas
     const lbl=(color,text,y)=>{ctxO.fillStyle=color;ctxO.font='9px monospace';ctxO.fillText(text,4,y);};
