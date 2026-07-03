@@ -16,7 +16,7 @@
         h3{ color:var(--dark); font-size:.85rem; margin:14px 0 8px; font-weight:700; }
 
         /* Layout */
-        .main-grid{ display:grid; grid-template-columns:340px 1fr; gap:20px; }
+        .main-grid{ display:grid; grid-template-columns:400px 1fr; gap:20px; }
 
         /* Inputs */
         .ctrl{ margin-bottom:12px; }
@@ -38,8 +38,13 @@
         }
 
         /* Band inputs grid */
+        /* Band inputs — 7 columnas con inputs cómodos */
         .band-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:5px; }
         .band-head{ text-align:center; font-size:.65rem; font-weight:700; color:#888; padding-bottom:2px; }
+        /* Inputs dentro de band-grid: sin padding horizontal para que quepan bien */
+        .band-grid input[type=number]{
+            padding:7px 1px; font-size:.82rem; min-height:36px; font-family:monospace;
+        }
 
         /* Toggle buttons */
         .toggle-row{ display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
@@ -216,10 +221,17 @@
                 <button class="tog" data-e="shout"   onclick="setEffort('shout')">Grito</button>
             </div>
 
-            <div class="ctrl">
-                <div class="ctrl-lbl">Ajuste de nivel (a 1 m) <span class="ctrl-val" id="val-speechAdj">+0 dB</span></div>
-                <input type="range" id="speechAdj" min="-10" max="+10" value="0" step="1" oninput="updateSpeechAdj()">
-                <small class="note">El preset carga los niveles del esfuerzo vocal seleccionado. Usa este ajuste para correcciones finas.</small>
+            <!-- NPS de voz por banda — pre-rellenado por preset, editable -->
+            <div class="ctrl" style="margin-top:6px;">
+                <div class="ctrl-lbl">NPS por banda a 1 m (dB SPL)</div>
+                <div class="band-grid" style="margin-bottom:4px;">
+                    <div class="band-head">125 Hz</div><div class="band-head">250 Hz</div>
+                    <div class="band-head">500 Hz</div><div class="band-head">1 kHz</div>
+                    <div class="band-head">2 kHz</div><div class="band-head">4 kHz</div>
+                    <div class="band-head">8 kHz</div>
+                </div>
+                <div class="band-grid" id="speechGrid"></div>
+                <small class="note">Pre-rellenado por el preset de voz. Puedes editar cualquier banda directamente.</small>
             </div>
 
             <div class="ctrl" style="margin-top:10px;">
@@ -512,8 +524,9 @@ function makeBandInputs(containerId, defaultVals, step=0.05, min=0, max=6) {
 }
 
 function initUI() {
-    makeBandInputs('t60Grid',   ROOM_PRESETS.priv_office, 0.05, 0, 10);
-    makeBandInputs('noiseGrid', NC_PRESETS.nc35,          0.5,  0, 90);
+    makeBandInputs('t60Grid',    ROOM_PRESETS.priv_office,              0.05, 0,  10);
+    makeBandInputs('noiseGrid',  NC_PRESETS.nc35,                       0.5,  0,  90);
+    makeBandInputs('speechGrid', VOICE_PRESETS['male']['normal'],        0.5,  0, 120);
     applyRoomPreset();
     calculate();
 }
@@ -568,8 +581,12 @@ function setWeights(w) {
 
 function loadVoicePreset() {
     const vals = VOICE_PRESETS[state.gender][state.effort];
-    // Store as custom baseline — user can see via detail table
     state.voiceBase = vals.slice();
+    // Rellenar la grilla visible — el usuario puede sobrescribir cualquier banda
+    vals.forEach((v, i) => {
+        const el = document.getElementById('speechGrid_' + i);
+        if (el) el.value = v;
+    });
 }
 
 function updateSpeechAdj() {
@@ -642,7 +659,10 @@ function stiQuality(sti) {
 }
 
 function alcons(sti) {
-    return (170.5405 * Math.exp(-5.419 * sti)).toFixed(1);
+    // Fórmula de Farrel Becker — validada contra tabla de referencia:
+    // STI=0.75 → 3% | STI=0.60 → 7% | STI=0.45 → 15% | STI=0.30 → 33%
+    const val = 170.5405 * Math.exp(-5.419 * sti);
+    return Math.min(100, Math.max(0, val)).toFixed(1);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -652,10 +672,12 @@ function calculate() {
     const t60  = BANDS.map((_, i) => parseFloat(document.getElementById('t60Grid_'+i).value) || 0.1);
     const noise= BANDS.map((_, i) => parseFloat(document.getElementById('noiseGrid_'+i).value) || 30);
 
-    // Nivel de voz: preset + ajuste + atenuación por distancia
-    const base  = state.voiceBase || VOICE_PRESETS[state.gender][state.effort];
+    // Nivel de voz: leer directamente de la grilla editable + atenuación por distancia
     const distCorr = 20 * Math.log10(Math.max(0.5, state.dist));
-    const speech = base.map(v => v + state.speechAdj - distCorr);
+    const speech = BANDS.map((_, i) => {
+        const v = parseFloat(document.getElementById('speechGrid_' + i)?.value) || 65;
+        return v - distCorr;
+    });
 
     const {sti, mtiR, mtiT, snrArr} = calcSTI(t60, speech, noise, state.weights);
     const q = stiQuality(sti);
@@ -772,9 +794,11 @@ function toggleComp() {
 function loadComparison() {
     state.compT60A = BANDS.map((_, i) => parseFloat(document.getElementById('t60Grid_'+i).value) || 0.1);
     state.compNoise = BANDS.map((_, i) => parseFloat(document.getElementById('noiseGrid_'+i).value) || 30);
-    const base = state.voiceBase || VOICE_PRESETS[state.gender][state.effort];
     const distCorr = 20 * Math.log10(Math.max(0.5, state.dist));
-    state.compSpeech = base.map(v => v + state.speechAdj - distCorr);
+    state.compSpeech = BANDS.map((_, i) => {
+        const v = parseFloat(document.getElementById('speechGrid_' + i)?.value) || 65;
+        return v - distCorr;
+    });
 
     // Calcular STI A
     const resA = calcSTI(state.compT60A, state.compSpeech, state.compNoise, state.weights);
